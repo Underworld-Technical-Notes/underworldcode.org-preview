@@ -1,0 +1,12 @@
+---
+title: "Surface processes"
+site:
+  hide_outline: true
+---
+
+<div class="uwtn-topic-head"><div class="uwtn-kicker">Subject</div><div class="uwtn-wordmark">Surface processes</div><div class="uwtn-standfirst">Erosion, sedimentation, landscape evolution, surface coupling.</div><div class="uwtn-query">2 notes &middot; search <code>tag:surface-processes</code> &middot; <a href="/topics/">all topics</a></div></div>
+
+<div class="uwtn-feed">
+<div class="uwtn-entry"><div class="uwtn-entry-text"><div class="uwtn-entry-meta"><span class="uwtn-id">UWTN 2025-004</span><span class="uwtn-date">25 August 2025</span></div><h2><a href="/new-features-of-the-surface-coupling-framework-in-underworld-2/">New features of the surface-coupling framework in Underworld 2</a></h2><div class="uwtn-entry-byline">Neng Lu</div><div class="uwtn-entry-summary"></div><div class="uwtn-entry-links"><a class="uwtn-read" href="/new-features-of-the-surface-coupling-framework-in-underworld-2/">Read</a> <span class="uwtn-doi"><span class="uwtn-doi-label">doi</span>10.6084/m9.figshare.33193557</span></div><div class="uwtn-tags"><a class="uwtn-tag" href="/topic-surface-processes/">Surface processes</a><a class="uwtn-tag" href="/topic-tectonics-lithosphere/">Tectonics & lithosphere</a><a class="uwtn-tag" href="/topic-time-integration/">Time integration</a><a class="uwtn-tag" href="/topic-benchmarks-validation/">Benchmarks & validation</a></div></div></div>
+<div class="uwtn-entry"><div class="uwtn-entry-text"><div class="uwtn-entry-meta"><span class="uwtn-id">UWTN 2021-005</span><span class="uwtn-date">3 December 2021</span></div><h2><a href="/free-surface-in-underworld/">Free surface in Underworld</a></h2><div class="uwtn-entry-byline">Neng Lu</div><div class="uwtn-entry-summary"></div><div class="uwtn-entry-links"><a class="uwtn-read" href="/free-surface-in-underworld/">Read</a> <span class="uwtn-doi"><span class="uwtn-doi-label">doi</span>10.6084/m9.figshare.33193503</span></div><div class="uwtn-tags"><a class="uwtn-tag" href="/topic-surface-processes/">Surface processes</a><a class="uwtn-tag" href="/topic-finite-elements/">Finite elements</a><a class="uwtn-tag" href="/topic-solvers/">Solvers</a></div></div></div>
+</div>
