@@ -1,0 +1,1 @@
+import{c as u}from"/underworldcode.org-preview/39f59269b1/build/_shared/chunk-OZE3FFNP.js";var a=u((g,e)=>{function r(n){return{name:"ERB",subLanguage:"xml",contains:[n.COMMENT("<%#","%>"),{begin:"<%[%=-]?",end:"[%-]?%>",subLanguage:"ruby",excludeBegin:!0,excludeEnd:!0}]}}e.exports=r});export default a();
