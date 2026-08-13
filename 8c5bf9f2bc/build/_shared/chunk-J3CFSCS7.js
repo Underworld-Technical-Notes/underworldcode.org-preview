@@ -1,0 +1,1 @@
+import{b as t}from"/underworldcode.org-preview/8c5bf9f2bc/build/_shared/chunk-7DW7L33J.js";var s=class{constructor(i){this.init=i,this.records=this.init()}static{t(this,"ImperativeState")}reset(){this.records=this.init()}};export{s as a};
