@@ -1,0 +1,801 @@
+<!DOCTYPE html><html lang="en" class="" style="scroll-padding:60px"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Setting Up Full Multigrid - Underworld Technical Notes</title><meta property="og:title" content="Setting Up Full Multigrid - Underworld Technical Notes"/><meta name="generator" content="mystmd"/><meta name="description" content="Geometric multigrid is the fastest preconditioner we have for Stokes on a refined mesh, and most of what decides whether it works is not in the solver options. What counts as a level, how the transfers are built when the levels were not made from each other, and why the outer Krylov has to be flexible."/><meta property="og:description" content="Geometric multigrid is the fastest preconditioner we have for Stokes on a refined mesh, and most of what decides whether it works is not in the solver options. What counts as a level, how the transfers are built when the levels were not made from each other, and why the outer Krylov has to be flexible."/><meta name="keywords" content="Underworld Code, Tricks of the Trade, development"/><link rel="stylesheet" href="/underworldcode.org-preview/0c9cad6b66/build/_assets/app-TIOB6ZNY.css"/><link rel="stylesheet" href="/underworldcode.org-preview/0c9cad6b66/build/_assets/thebe-core-VKVHG5VY.css"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jupyter-matplotlib@0.11.3/css/mpl_widget.css"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.css" integrity="sha384-MlJdn/WNKDGXveldHDdyRP1R4CTHr3FeuDNfhsLPYrq2t0UBkUdK2jyTnXPEK1NQ" crossorigin="anonymous"/><link rel="icon" href="/underworldcode.org-preview/0c9cad6b66/favicon.ico"/><link rel="stylesheet" href="/underworldcode.org-preview/0c9cad6b66/myst-theme.css"/><script>
+  const savedTheme = localStorage.getItem("myst:theme");
+  const theme = window.matchMedia("(prefers-color-scheme: light)").matches ? 'light' : 'dark';
+  const classes = document.documentElement.classList;
+  const hasAnyTheme = classes.contains('light') || classes.contains('dark');
+  if (!hasAnyTheme) classes.add(savedTheme ?? theme);
+</script><script>(function(){var p=window.location.pathname;if(p.endsWith('/index.html'))window.location.replace((p.slice(0,-10)||'/')+window.location.search+window.location.hash);})();</script><style id="uwtn-inlined-style">
+/* Underworld Technical Notes — site styling.
+ *
+ * The aim is that the site and the archival PDF look like the same
+ * publication. The PDF sets its body in a serif with small-caps labels in a
+ * muted blue down the margin; the site borrows that vocabulary rather than
+ * inventing a second identity. Anything here that is merely decorative should
+ * be removed instead of elaborated.
+ */
+
+:root {
+  --uwtn-ink: #16202b;
+  --uwtn-muted: #5d6b7a;
+  --uwtn-rule: #dfe4ea;
+  --uwtn-accent: #1a4f80;        /* the PDF's theme colour, blue.darken(30%) */
+  --uwtn-paper: #ffffff;
+  --uwtn-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+                "Times New Roman", serif;
+  --uwtn-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --uwtn-ink: #e6e9ec;
+    --uwtn-muted: #9aa7b4;
+    --uwtn-rule: #2b3541;
+    --uwtn-accent: #7cb3e0;
+    --uwtn-paper: #131a21;
+  }
+}
+
+/* ---- masthead ---------------------------------------------------------- */
+
+.uwtn-masthead {
+  border-bottom: 1px solid var(--uwtn-rule);
+  padding-bottom: 1.6rem;
+  margin-bottom: 2.4rem;
+}
+
+.uwtn-kicker {
+  font-family: var(--uwtn-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  margin: 0 0 0.15rem;
+}
+
+.uwtn-wordmark {
+  font-family: var(--uwtn-serif);
+  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--uwtn-ink);
+  margin: 0 0 0.7rem;
+}
+
+.uwtn-standfirst {
+  font-family: var(--uwtn-serif);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--uwtn-muted);
+  max-width: 34em;
+  margin: 0;
+}
+
+/* ---- the feed ---------------------------------------------------------- */
+
+/* MyST strips <article>, <p class> and <time>, so entries are divs. The title
+   stays a real heading but loses its class -- hence the descendant selector. */
+.uwtn-entry {
+  border-top: 1px solid var(--uwtn-rule);
+  padding: 1.5rem 0 1.4rem;
+}
+
+.uwtn-entry:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Article id and date, echoing the identity strip down the PDF's margin. */
+.uwtn-entry-meta,
+.uwtn-kicker {
+  font-family: var(--uwtn-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin: 0 0 0.35rem;
+  display: flex;
+  gap: 0.9rem;
+}
+
+.uwtn-id { color: var(--uwtn-accent); font-weight: 600; }
+
+.uwtn-entry :is(h1, h2, h3, h4) {
+  font-family: var(--uwtn-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.3rem;
+}
+
+/* The theme's hover anchor (¶) belongs on documentation, not on a feed. */
+.uwtn-entry :is(h1, h2, h3, h4) > a[href^="#"] { display: none; }
+
+.uwtn-entry :is(h1, h2, h3, h4) a {
+  color: var(--uwtn-ink);
+  text-decoration: none;
+  background-image: linear-gradient(var(--uwtn-accent), var(--uwtn-accent));
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.18s ease;
+}
+
+.uwtn-entry :is(h1, h2, h3, h4) a:hover { background-size: 100% 1px; }
+
+.uwtn-entry-byline {
+  font-family: var(--uwtn-sans);
+  font-size: 0.82rem;
+  color: var(--uwtn-muted);
+  margin: 0 0 0.55rem;
+}
+
+.uwtn-entry-summary {
+  font-family: var(--uwtn-serif);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--uwtn-ink);
+  max-width: 38em;
+  margin: 0 0 0.7rem;
+}
+
+/* ---- affordances ------------------------------------------------------- */
+
+.uwtn-entry-links {
+  font-family: var(--uwtn-sans);
+  font-size: 0.8rem;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  align-items: baseline;
+}
+
+.uwtn-entry-links a {
+  color: var(--uwtn-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.uwtn-entry-links a:hover { border-bottom-color: currentColor; }
+
+.uwtn-read::after { content: " →"; }
+
+/* The DOI is the published identifier, so it is shown in full rather than
+   hidden behind a word. */
+.uwtn-doi-label {
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin-right: 0.35em;
+}
+
+.uwtn-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0;
+  margin: 0.7rem 0 0;
+}
+
+.uwtn-tag {
+  font-family: var(--uwtn-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--uwtn-muted);
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 2px;
+  padding: 0.1rem 0.45rem;
+}
+
+.uwtn-colophon {
+  border-top: 1px solid var(--uwtn-rule);
+  margin-top: 2.4rem;
+  padding-top: 1.2rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--uwtn-muted);
+  max-width: 38em;
+}
+
+/* ---- article pages ----------------------------------------------------- */
+
+/* Give the body the same serif as the PDF, so an article reads as the same
+   document in a different medium. Code and maths keep the theme's fonts. */
+.uwtn-article-body,
+article.content p,
+article.content li,
+article.content blockquote {
+  font-family: var(--uwtn-serif);
+  font-size: 1.02rem;
+  line-height: 1.62;
+}
+
+article.content h1,
+article.content h2,
+article.content h3 {
+  font-family: var(--uwtn-serif);
+  letter-spacing: -0.005em;
+}
+
+/* Captions read as apparatus, matching the PDF: sans, smaller, lighter. */
+article.content figcaption,
+article.content figcaption p {
+  font-family: var(--uwtn-sans);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--uwtn-muted);
+}
+
+@media (max-width: 640px) {
+  .uwtn-entry-meta { flex-direction: column; gap: 0.1rem; }
+  .uwtn-entry-title { font-size: 1.3rem; }
+}
+
+/* ---- year rules -------------------------------------------------------- */
+
+/* The feed is grouped the way the article ids are, by year. If the series ever
+   adopts volumes this label is where that happens. */
+.uwtn-year {
+  font-family: var(--uwtn-sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin: 2.4rem 0 0.9rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid var(--uwtn-ink);
+}
+
+.uwtn-year:first-child { margin-top: 0; }
+.uwtn-year + .uwtn-entry { border-top: none; padding-top: 0.2rem; }
+
+/* ---- the lead item ----------------------------------------------------- */
+
+.uwtn-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1.6rem;
+  align-items: start;
+}
+
+.uwtn-lead .uwtn-thumb { order: 2; }
+.uwtn-lead .uwtn-entry-text { order: 1; }
+
+.uwtn-lead :is(h1, h2, h3, h4) { font-size: 2rem; line-height: 1.12; }
+.uwtn-lead .uwtn-entry-summary { font-size: 1.08rem; }
+
+.uwtn-thumb {
+  display: block;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--uwtn-rule);
+}
+
+.uwtn-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  /* Decorative, so it should not compete with the words. */
+  filter: saturate(0.82);
+  transition: filter 0.25s ease, transform 0.4s ease;
+}
+
+.uwtn-thumb:hover img { filter: saturate(1); transform: scale(1.02); }
+
+/* ---- article banner ---------------------------------------------------- */
+
+/* Kept from the Ghost posts, and only on the web: the banner is a raw HTML
+   block, which the HTML build renders and the Typst build drops, so the
+   archival PDF stays free of decoration. */
+.uwtn-banner {
+  margin: 0 0 2rem;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--uwtn-rule);
+}
+
+.uwtn-banner img {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+}
+
+@media (max-width: 720px) {
+  .uwtn-lead { grid-template-columns: 1fr; gap: 1rem; }
+  .uwtn-lead .uwtn-thumb { order: 1; }
+  .uwtn-lead .uwtn-entry-text { order: 2; }
+  .uwtn-lead :is(h1, h2, h3, h4) { font-size: 1.5rem; }
+  .uwtn-banner img { max-height: 180px; }
+}
+
+/* ---- image credit ------------------------------------------------------ */
+
+/* Unsplash's licence asks for attribution wherever the photograph appears.
+   It sits on the image rather than beside it, so it credits without competing
+   with the article, and is always reachable — revealed on hover, and on focus
+   for anyone navigating by keyboard. */
+.uwtn-banner { position: relative; }
+
+.uwtn-credit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  max-width: 100%;
+  padding: 0.3rem 0.6rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: #fff;
+  background: rgba(12, 18, 24, 0.72);
+  backdrop-filter: blur(3px);
+  border-top-left-radius: 3px;
+  opacity: 0;
+  transform: translateY(0.3rem);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.uwtn-banner:hover .uwtn-credit,
+.uwtn-banner:focus-within .uwtn-credit { opacity: 1; transform: none; }
+
+.uwtn-credit a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Touch devices have no hover, so the credit is simply always shown. */
+@media (hover: none) {
+  .uwtn-credit { opacity: 1; transform: none; position: static; background: none;
+                 color: var(--uwtn-muted); padding: 0.4rem 0 0; }
+  .uwtn-credit a { color: var(--uwtn-accent); }
+}
+
+/* ---- topics ------------------------------------------------------------ */
+
+a.uwtn-tag { text-decoration: none; transition: border-color 0.15s ease, color 0.15s ease; }
+a.uwtn-tag:hover { color: var(--uwtn-accent); border-color: var(--uwtn-accent); }
+
+.uwtn-topic-head { border-bottom: 1px solid var(--uwtn-rule);
+                   padding-bottom: 1.2rem; margin-bottom: 2rem; }
+.uwtn-topic-head .uwtn-wordmark { font-size: clamp(1.6rem, 4vw, 2.2rem); }
+
+.uwtn-topic-list { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.uwtn-topic-link {
+  font-family: var(--uwtn-sans);
+  font-size: 0.9rem;
+  color: var(--uwtn-ink);
+  text-decoration: none;
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 3px;
+  padding: 0.45rem 0.8rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.uwtn-topic-link:hover { border-color: var(--uwtn-accent); color: var(--uwtn-accent); }
+
+.uwtn-topic-count {
+  font-size: 0.7rem;
+  color: var(--uwtn-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The searchable query token on a topic page. Visible on purpose: it tells the
+   reader the query exists, which hidden text cannot, and it is what the search
+   index is built from. */
+.uwtn-query {
+  font-family: var(--uwtn-sans);
+  font-size: 0.75rem;
+  color: var(--uwtn-muted);
+  margin-top: 0.6rem;
+}
+
+.uwtn-query code {
+  font-size: 0.75rem;
+  background: var(--uwtn-rule);
+  border-radius: 2px;
+  padding: 0.1rem 0.35rem;
+  color: var(--uwtn-ink);
+}
+
+/* Facets the series has not covered yet. Shown rather than hidden: an empty
+   subject is a statement about the corpus, not an oversight. */
+.uwtn-axis { margin-bottom: 2rem; }
+
+.uwtn-unused {
+  font-family: var(--uwtn-sans);
+  font-size: 0.72rem;
+  color: var(--uwtn-muted);
+  margin-top: 0.7rem;
+}
+
+/* ---- baked bibliography ------------------------------------------------ */
+
+/* Rendered from Zotero at build time rather than fetched by client script, so
+   it is present without JavaScript, when Zotero is down, and in the archive. */
+.uwtn-bibliography { margin-top: 1.4rem; }
+
+.uwtn-ref {
+  font-family: var(--uwtn-serif);
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--uwtn-ink);
+  padding: 0.55rem 0 0.55rem 1.4rem;
+  text-indent: -1.4rem;          /* hanging indent, as a reference list wants */
+  border-bottom: 1px solid var(--uwtn-rule);
+  max-width: 42em;
+}
+
+.uwtn-ref:last-child { border-bottom: none; }
+.uwtn-ref a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-ref a:hover { text-decoration: underline; }
+
+/* ---- discussion -------------------------------------------------------- */
+
+.uwtn-discuss {
+  margin-top: 3rem;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 3px;
+  font-family: var(--uwtn-sans);
+}
+
+.uwtn-discuss-head {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  margin-bottom: 0.45rem;
+}
+
+.uwtn-discuss-body {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--uwtn-muted);
+  max-width: 42em;
+  margin-bottom: 0.9rem;
+}
+
+.uwtn-discuss-links { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.85rem; }
+.uwtn-discuss-links a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-discuss-links a:hover { text-decoration: underline; }
+.uwtn-discuss-links a::after { content: " →"; }
+
+/* A DOI on a listing is an identifier, shown rather than linked -- see
+   scripts/build_index.py for why. */
+.uwtn-doi { color: var(--uwtn-muted); font-variant-numeric: tabular-nums; }
+
+/* ---- comments ---------------------------------------------------------- */
+
+/* Giscus's script inserts its own frame here, sized by its own postMessage
+   resizing -- there is no MyST iframe wrapper to fight. The block sits above
+   the discussion links, which remain as the fallback. */
+.uwtn-comments {
+  margin-top: 2.5rem;
+}
+
+.uwtn-comments iframe { border: none; width: 100%; }
+
+
+/* ---- front page -------------------------------------------------------- */
+
+/* The front page is Underworld's own, not the series'. It leads with the
+   software and what it is for; the Technical Notes are one thing among
+   several, reached from the header. The masthead above is reserved for
+   /notes/, so that the two pages are visibly different publications. */
+
+.uwtn-hero {
+  border-bottom: 1px solid var(--uwtn-rule);
+  padding-bottom: 1.8rem;
+  margin-bottom: 2rem;
+}
+
+.uwtn-hero-title {
+  font-family: var(--uwtn-serif);
+  font-weight: 600;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--uwtn-ink);
+  margin: 0 0 0.8rem;
+}
+
+.uwtn-hero .uwtn-standfirst { font-size: 1.15rem; max-width: 36em; }
+
+.uwtn-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.4rem;
+  align-items: center;
+  margin-top: 1.4rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.9rem;
+}
+
+.uwtn-hero-actions a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-hero-actions a:hover { text-decoration: underline; }
+
+.uwtn-cta {
+  background: var(--uwtn-accent);
+  color: var(--uwtn-paper) !important;
+  padding: 0.5rem 1.1rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.uwtn-cta:hover { filter: brightness(1.12); text-decoration: none !important; }
+
+/* Three recent notes, as a pointer into the series rather than a feed of it.
+   Deliberately terser than .uwtn-entry: this is a signpost, not the contents. */
+.uwtn-briefs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.2rem;
+  margin: 1.6rem 0 2.4rem;
+}
+
+.uwtn-brief {
+  display: block;
+  border-top: 2px solid var(--uwtn-accent);
+  padding-top: 0.7rem;
+  text-decoration: none;
+  color: inherit;
+}
+.uwtn-brief:hover .uwtn-brief-title { text-decoration: underline; }
+
+.uwtn-brief-id {
+  display: block;
+  font-family: var(--uwtn-sans);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.uwtn-brief-title {
+  display: block;
+  font-family: var(--uwtn-serif);
+  font-size: 1.08rem;
+  line-height: 1.25;
+  color: var(--uwtn-ink);
+  margin-bottom: 0.35rem;
+}
+
+.uwtn-brief-summary {
+  display: block;
+  font-family: var(--uwtn-serif);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--uwtn-muted);
+}
+
+/* Section headings on the front page.
+ *
+ * A div, not a markdown heading. The theme nests headings several levels
+ * inside <main>, so a selector aimed at them either misses -- as `main > h2`
+ * did -- or has to reach through the template's own classes and breaks the
+ * next time they change. The outline is hidden on this page, so nothing is
+ * lost by not making these real headings. */
+.uwtn-section {
+  font-family: var(--uwtn-serif);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--uwtn-ink);
+  border-top: 1px solid var(--uwtn-rule);
+  padding-top: 1.6rem;
+  margin: 2.6rem 0 0.4rem;
+}
+
+.uwtn-section-note {
+  font-family: var(--uwtn-serif);
+  color: var(--uwtn-muted);
+  margin: 0 0 1.2rem;
+}
+
+/* The front page's animated band. Shaped like an article banner -- full
+   width, capped height, cropped rather than squashed -- so the two read as the
+   same kind of object. The class may land on the image itself or on a wrapper
+   depending on how the theme renders a MyST :class:, so both are covered. */
+.uwtn-landing-banner,
+.uwtn-landing-banner img {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  object-position: center top;          /* if the box is shorter than the
+                                           scaled band, lose the inner hole at
+                                           the bottom -- never the outer
+                                           surface, which is the subject */
+  margin: 0 0 2rem;
+  border-radius: 3px;
+  border: 1px solid var(--uwtn-rule);
+}
+.uwtn-landing-banner img {
+  margin: 0;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .uwtn-landing-banner,
+  .uwtn-landing-banner img { max-height: 180px; }
+}
+
+</style><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"></head><body class="m-0 bg-white dark:bg-stone-900"><div class="myst-skip-to-article fixed top-1 left-1 h-[0px] w-[0px] focus-within:z-40 focus-within:h-auto focus-within:w-auto bg-white overflow-hidden focus-within:p-2 focus-within:ring-1" aria-label="skip to content options"><a href="#skip-to-frontmatter" class="myst-skip-to-link block px-2 py-1 text-black underline">Skip to article frontmatter</a><a href="#skip-to-article" class="myst-skip-to-link block px-2 py-1 text-black underline">Skip to article content</a></div><dialog id="myst-no-css" style="position:fixed;left:0px;top:0px;width:100%;height:100vh;font-size:4rem;padding:1rem;color:black;background:white"><strong>Site not loading correctly?</strong><p>This may be due to an incorrect <code>BASE_URL</code> configuration. See<!-- --> <a href="https://mystmd.org/guide/deployment#deploy-base-url">the MyST Documentation</a> <!-- -->for reference.</p><script>
+    (() => {
+            // Test for has-styling variable set by the MyST stylesheet
+            const node = document.currentScript.parentNode;
+            const hasCSS = window.getComputedStyle(node).getPropertyValue("--has-styling");
+            if (hasCSS === ""){
+                    node.showModal();
+            }
+
+    })()
+</script></dialog><div class="myst-top-nav bg-white/80 backdrop-blur dark:bg-stone-900/80 shadow dark:shadow-stone-700 p-3 md:px-8 sticky w-full top-0 z-30 min-h-[60px]"><nav class="myst-top-nav-bar flex items-center justify-between flex-nowrap max-w-[1440px] mx-auto"><div class="flex flex-row xl:min-w-[19.5rem] mr-2 sm:mr-7 justify-start items-center shrink-0"><div class="block xl:hidden"><button class="myst-top-nav-menu-button flex items-center justify-center border-stone-400 text-stone-800 hover:text-stone-900 dark:text-stone-200 hover:dark:text-stone-100 w-10 h-10"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.5rem" height="1.5rem"><path fill-rule="evenodd" d="M3 6.75A.75.75 0 0 1 3.75 6h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 6.75ZM3 12a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm0 5.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd"></path></svg><span class="sr-only">Open Menu</span></button></div><a class="myst-home-link flex items-center ml-3 dark:text-white w-fit md:ml-5 xl:ml-7" href="/underworldcode.org-preview/0c9cad6b66/"><span class="text-md sm:text-xl tracking-tight sm:mr-5">Underworld Technical Notes</span></a></div><div class="flex items-center flex-grow w-auto"><div class="flex-grow hidden text-md lg:block"><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R2j5cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>About</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R335cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>Underworld</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R3j5cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>Technical Notes</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div></div><div class="flex-grow block"></div><button type="button" aria-haspopup="dialog" aria-expanded="false" data-state="closed" class="myst-search-bar flex items-center h-10 aspect-square sm:w-64 text-left text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 myst-search-bar-disabled hover:ring-blue-500 dark:hover:ring-blue-500 hover:border-blue-500 dark:hover:border-blue-500"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="p-2.5 h-10 w-10 aspect-square"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clip-rule="evenodd"></path></svg><span class="myst-search-text-placeholder hidden sm:block grow">Search</span><div aria-hidden="true" class="myst-search-shortcut items-center hidden mx-1 font-mono text-sm text-gray-600 dark:text-gray-300 sm:flex gap-x-1"><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none hide-mac">CTRL</kbd><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none show-mac">⌘</kbd><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none ">K</kbd><script>
+;(() => {
+const script = document.currentScript;
+const root = script.parentElement;
+
+const isMac = /mac/i.test(
+      window.navigator.userAgentData?.platform ?? window.navigator.userAgent,
+    );
+root.querySelectorAll(".hide-mac").forEach(node => {node.classList.add(isMac ? "hidden" : "block")});
+root.querySelectorAll(".show-mac").forEach(node => {node.classList.add(!isMac ? "hidden" : "block")});
+})()</script></div></button><button class="myst-theme-button theme shrink-0 rounded-full border border-stone-700 dark:border-white hover:bg-neutral-100 border-solid overflow-hidden text-stone-700 dark:text-white hover:text-stone-500 dark:hover:text-neutral-800 w-8 h-8 ml-3" title="Toggle theme between light and dark mode" aria-label="Toggle theme between light and dark mode"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-theme-moon-icon h-full w-full p-[18%] hidden dark:block"><path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z" clip-rule="evenodd"></path></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-theme-sun-icon h-full w-full p-[18%] dark:hidden"><path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.758 17.303a.75.75 0 0 0-1.061-1.06l-1.591 1.59a.75.75 0 0 0 1.06 1.061l1.591-1.59ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.697 7.757a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 0 0-1.061 1.06l1.59 1.591Z"></path></svg></button><div class="block sm:hidden"></div><div class="hidden sm:block"></div></div></nav></div><div class="myst-primary-sidebar fixed xl:article-grid grid-gap xl:w-full xl:pointer-events-none overflow-auto max-xl:w-[75vw] max-xl:max-w-[350px] max-xl:!top-0 max-xl:h-screen hidden z-10" style="top:60px"><div class="myst-primary-sidebar-pointer pointer-events-auto xl:col-margin-left flex-col overflow-hidden max-xl:h-full hidden xl:flex"><div class="myst-primary-sidebar-nav flex-grow py-6 overflow-y-auto primary-scrollbar"><nav aria-label="Navigation" class="myst-primary-sidebar-topnav overflow-y-hidden transition-opacity lg:hidden ml-3 xl:ml-0 mr-3 max-w-[350px]"><div class="w-full px-1 dark:text-white font-medium"><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/0c9cad6b66undefined">About</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:Ripsp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:Ripsp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/0c9cad6b66undefined">Underworld</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:R12psp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:R12psp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/0c9cad6b66undefined">Technical Notes</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:R1ipsp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:R1ipsp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div></div></nav><div class="my-3 border-b-2 lg:hidden"></div><nav aria-label="Table of Contents" class="myst-primary-sidebar-toc flex-grow overflow-y-hidden transition-opacity ml-3 xl:ml-0 mr-3 max-w-[350px]"><div class="myst-toc w-full px-1 dark:text-white"><a title="Underworld Technical Notes" class="block break-words focus:outline outline-blue-200 outline-2 rounded myst-toc-item p-2 my-1 rounded-lg hover:bg-slate-300/30 font-bold" href="/underworldcode.org-preview/0c9cad6b66/">Underworld Technical Notes</a><a title="Setting Up Full Multigrid" class="block break-words focus:outline outline-blue-200 outline-2 rounded myst-toc-item p-2 my-1 rounded-lg myst-toc-item-exact bg-blue-300/30" href="/underworldcode.org-preview/0c9cad6b66/setting-up-full-multigrid">Setting Up Full Multigrid</a></div></nav></div><div class="myst-primary-sidebar-footer flex-none py-6 transition-all duration-700 translate-y-6 opacity-0 ml-3 xl:ml-0 mr-3 max-w-[350px]"><a class="myst-made-with-myst flex mx-auto text-gray-700 w-fit hover:text-blue-700 dark:text-gray-200 dark:hover:text-blue-400" href="https://mystmd.org/made-with-myst" target="_blank" rel="noreferrer"><svg style="width:24px;height:24px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" stroke="none"><g id="icon"><path fill="currentColor" d="M23.8,54.8v-3.6l4.7-0.8V17.5l-4.7-0.8V13H36l13.4,31.7h0.2l13-31.7h12.6v3.6l-4.7,0.8v32.9l4.7,0.8v3.6h-15
+          v-3.6l4.9-0.8V20.8H65L51.4,53.3h-3.8l-14-32.5h-0.1l0.2,17.4v12.1l5,0.8v3.6H23.8z"></path><path fill="#F37726" d="M47,86.9c0-5.9-3.4-8.8-10.1-8.8h-8.4c-5.2,0-9.4-1.3-12.5-3.8c-3.1-2.5-5.4-6.2-6.8-11l4.8-1.6
+          c1.8,5.6,6.4,8.6,13.8,8.8h9.2c6.4,0,10.8,2.5,13.1,7.5c2.3-5,6.7-7.5,13.1-7.5h8.4c7.8,0,12.7-2.9,14.6-8.7l4.8,1.6
+          c-1.4,4.9-3.6,8.6-6.8,11.1c-3.1,2.5-7.3,3.7-12.4,3.8H63c-6.7,0-10,2.9-10,8.8"></path></g></svg><span class="self-center ml-2 text-sm">Made with MyST</span></a></div></div></div><main class="article-grid grid-gap"><article class="article-grid subgrid-gap col-screen article content"><div class="hidden"></div><div id="skip-to-frontmatter" aria-label="article frontmatter" class="myst-fm-block mb-8 pt-9"><div class="myst-fm-block-header flex items-center mb-5 h-6 text-sm font-light"><div class="flex-grow"></div><div class="myst-fm-block-badges"><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" class="myst-fm-license-cc-badge opacity-50 hover:opacity-100 text-inherit hover:text-inherit myst-fm-license-content" aria-label="Content License: Creative Commons Attribution 4.0 International (CC-BY-4.0)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-license-cc-icon myst-fm-license-cc-icon-main inline-block mx-1"><title>Content License: Creative Commons Attribution 4.0 International (CC-BY-4.0)</title><path d="M12 2.2c2.7 0 5 1 7 2.9.9.9 1.6 2 2.1 3.1.5 1.2.7 2.4.7 3.8 0 1.3-.2 2.6-.7 3.8-.5 1.2-1.2 2.2-2.1 3.1-1 .9-2 1.7-3.2 2.2-1.2.5-2.5.7-3.7.7s-2.6-.3-3.8-.8c-1.2-.5-2.2-1.2-3.2-2.1s-1.6-2-2.1-3.2-.8-2.4-.8-3.7c0-1.3.2-2.5.7-3.7S4.2 6 5.1 5.1C7 3.2 9.3 2.2 12 2.2zM12 4c-2.2 0-4.1.8-5.6 2.3C5.6 7.1 5 8 4.6 9c-.4 1-.6 2-.6 3s.2 2.1.6 3c.4 1 1 1.8 1.8 2.6S8 19 9 19.4c1 .4 2 .6 3 .6s2.1-.2 3-.6c1-.4 1.9-1 2.7-1.8 1.5-1.5 2.3-3.3 2.3-5.6 0-1.1-.2-2.1-.6-3.1-.4-1-1-1.8-1.7-2.6C16.1 4.8 14.2 4 12 4zm-.1 6.4l-1.3.7c-.1-.3-.3-.5-.5-.6-.2-.1-.4-.2-.6-.2-.9 0-1.3.6-1.3 1.7 0 .5.1.9.3 1.3.2.3.5.5 1 .5.6 0 1-.3 1.2-.8l1.2.6c-.3.5-.6.9-1.1 1.1-.5.3-1 .4-1.5.4-.9 0-1.6-.3-2.1-.8-.5-.6-.8-1.3-.8-2.3 0-.9.3-1.7.8-2.2.6-.6 1.3-.8 2.1-.8 1.2 0 2.1.4 2.6 1.4zm5.6 0l-1.3.7c-.1-.3-.3-.5-.5-.6-.2-.1-.4-.2-.6-.2-.9 0-1.3.6-1.3 1.7 0 .5.1.9.3 1.3.2.3.5.5 1 .5.6 0 1-.3 1.2-.8l1.2.6c-.3.5-.6.9-1.1 1.1-.4.2-.9.3-1.4.3-.9 0-1.6-.3-2.1-.8s-.8-1.3-.8-2.2c0-.9.3-1.7.8-2.2.5-.5 1.2-.8 2-.8 1.2 0 2.1.4 2.6 1.4z"></path></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-license-cc-icon myst-fm-license-cc-icon-by inline-block mr-1"><title>Credit must be given to the creator</title><path d="M12 2.2c2.7 0 5 .9 6.9 2.8 1.9 1.9 2.8 4.2 2.8 6.9s-.9 5-2.8 6.8c-2 1.9-4.3 2.9-7 2.9-2.6 0-4.9-1-6.9-2.9-1.8-1.7-2.8-4-2.8-6.7s1-5 2.9-6.9C7 3.2 9.3 2.2 12 2.2zM12 4c-2.2 0-4.1.8-5.6 2.3C4.8 8 4 9.9 4 12c0 2.2.8 4 2.4 5.6C8 19.2 9.8 20 12 20c2.2 0 4.1-.8 5.7-2.4 1.5-1.5 2.3-3.3 2.3-5.6 0-2.2-.8-4.1-2.3-5.7C16.1 4.8 14.2 4 12 4zm2.6 5.6v4h-1.1v4.7h-3v-4.7H9.4v-4c0-.2.1-.3.2-.4.1-.2.2-.2.4-.2h4c.2 0 .3.1.4.2.2.1.2.2.2.4zm-4-2.5c0-.9.5-1.4 1.4-1.4s1.4.5 1.4 1.4c0 .9-.5 1.4-1.4 1.4s-1.4-.5-1.4-1.4z"></path></svg></a><a href="https://en.wikipedia.org/wiki/Open_access" target="_blank" rel="noopener noreferrer" title="Open Access" class="myst-fm-open-access-badge text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-block-open-access-icon mr-1 inline-block opacity-60 hover:opacity-100 hover:text-[#E18435]"><path d="M17.1 12.6h-2V7.5c0-1.7-1.4-3.1-3-3.1-.8 0-1.6.3-2.2.9-.6.5-.9 1.3-.9 2.2v.7H7v-.7c0-1.4.5-2.7 1.5-3.7s2.2-1.5 3.6-1.5 2.6.5 3.6 1.5 1.5 2.3 1.5 3.7v5.1z"></path><path d="M12 21.8c-.8 0-1.6-.2-2.3-.5-.7-.3-1.4-.8-1.9-1.3-.6-.6-1-1.2-1.3-2-.3-.8-.5-1.6-.5-2.4s.2-1.6.5-2.4c.3-.7.7-1.4 1.3-2s1.2-1 1.9-1.3c.7-.3 1.5-.5 2.3-.5.8 0 1.6.2 2.3.5.7.3 1.4.8 1.9 1.3.6.6 1 1.2 1.3 2 .3.8.5 1.6.5 2.4s-.2 1.6-.5 2.4c-.3.7-.7 1.4-1.3 2-.6.6-1.2 1-1.9 1.3-.7.3-1.5.5-2.3.5zm0-10.3c-2.2 0-4 1.8-4 4.1s1.8 4.1 4 4.1 4-1.8 4-4.1-1.8-4.1-4-4.1z"></path><circle cx="12" cy="15.6" r="1.7"></circle></svg></a><a href="https://github.com/underworld-technical-notes/underworldcode.org" title="GitHub Repository: underworld-technical-notes/underworldcode.org" target="_blank" rel="noopener noreferrer" class="myst-fm-github-link text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-github-icon inline-block mr-1 opacity-60 hover:opacity-100"><path d="M12 2.5c-5.4 0-9.8 4.4-9.8 9.7 0 4.3 2.8 8 6.7 9.2.5.1.7-.2.7-.5v-1.8c-2.4.5-3.1-.6-3.3-1.1-.1-.3-.6-1.1-1-1.4-.3-.2-.8-.6 0-.6s1.3.7 1.5 1c.9 1.5 2.3 1.1 2.8.8.1-.6.3-1.1.6-1.3-2.2-.2-4.4-1.1-4.4-4.8 0-1.1.4-1.9 1-2.6-.1-.2-.4-1.2.1-2.6 0 0 .8-.3 2.7 1 .8-.2 1.6-.3 2.4-.3.8 0 1.7.1 2.4.3 1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.3.1 2.6.6.7 1 1.5 1 2.6 0 3.7-2.3 4.6-4.4 4.8.4.3.7.9.7 1.8V21c0 .3.2.6.7.5 3.9-1.3 6.6-4.9 6.6-9.2 0-5.4-4.4-9.8-9.8-9.8z"></path></svg></a></div><a href="https://github.com/underworld-technical-notes/underworldcode.org/edit/main/articles/setting-up-full-multigrid/setting-up-full-multigrid.md" title="Edit This Page" target="_blank" rel="noopener noreferrer" class="myst-fm-edit-link text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="myst-fm-edit-icon inline-block mr-1 opacity-60 hover:opacity-100"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"></path></svg></a><div class="myst-fm-downloads-dropdown relative flex inline-block mx-1 grow-0" data-headlessui-state=""><button class="myst-fm-downloads-button relative ml-2 -mr-1" id="headlessui-menu-button-:Rs8ucp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span class="sr-only">Downloads</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="myst-fm-downloads-icon"><title>Download</title><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"></path></svg></button></div></div><h1 class="myst-fm-block-title mb-0">Setting Up Full Multigrid</h1><header class="myst-fm-authors-affiliations mt-4 not-prose"><div class="myst-fm-authors-grid grid grid-cols-1 sm:grid-cols-2 gap-y-1"><div class="myst-fm-author-col"><span class="myst-fm-author font-semibold text-sm"><button class="myst-fm-author-popover focus:shadow-[0_0_0_2px] focus:shadow-black outline-none hover:underline" aria-label="Author Details" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:R2t8ucp:" data-state="closed"><span class="myst-fm-author-name">Louis Moresi</span></button><a class="myst-fm-author-icon-link ml-1" href="https://orcid.org/0000-0003-3685-174X" title="ORCID: 0000-0003-3685-174X" target="_blank" rel="noopener noreferrer"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1rem" height="1rem" class="myst-fm-author-icon inline-block text-gray-400 -translate-y-[0.1em] myst-fm-author-icon-orcid hover:text-[#A9C751]"><path d="M21.8 12c0 5.4-4.4 9.8-9.8 9.8S2.2 17.4 2.2 12 6.6 2.2 12 2.2s9.8 4.4 9.8 9.8zM8.2 5.8c-.4 0-.8.3-.8.8s.3.8.8.8.8-.4.8-.8-.3-.8-.8-.8zm2.3 9.6h1.2v-6h1.8c2.3 0 3.3 1.4 3.3 3s-1.5 3-3.3 3h-3v1.1H9V8.3H7.7v8.2h5.9c3.3 0 4.5-2.2 4.5-4.1s-1.2-4.1-4.3-4.1h-3.2l-.1 7.1z"></path></svg></a></span></div><div class="myst-fm-affiliation-col text-sm"><div class="myst-fm-affiliation-item">Australian National University<!-- --> </div></div></div></header><div class="myst-fm-block-date-doi flex mt-2 text-sm font-light"><time dateTime="2026-08-14" class="myst-fm-date-string">August 14, 2026</time></div></div><div class="block my-10 lg:sticky lg:z-10 lg:h-0 lg:pt-0 lg:my-0 lg:ml-10 lg:col-margin-right" style="top:60px"><nav></nav></div><div id="skip-to-article"></div><p>A Stokes solve is where the time goes, and multigrid is how we stop it going
+there. The idea is old and well described: solve the problem on a sequence of
+grids, let each grid remove the part of the error it can see cheaply, and the
+work per unknown stops growing with the size of the problem.</p><p>What is much less well described is what to do when the hierarchy you have is
+not the tidy one in the textbook. Ours rarely is. A mesh gets refined where a
+fault or a boundary layer needs it, so the levels differ by a factor that is
+not two. A mesh gets cut, or moved, or adapted between timesteps, so the levels
+were not all built from one another. This note is about the parts that decide
+whether multigrid actually helps on a mesh like that, and none of them are the
+options you type into PETSc.</p><h2 id="turning-it-on" class="relative group"><span class="heading-text">Turning it on</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#turning-it-on" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>Build the mesh with a refinement hierarchy and it is already on:</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-python" style="white-space:pre">mesh = uw.meshing.UnstructuredSimplexBox(cellSize=0.05, refinement=2)
+stokes = uw.systems.Stokes(mesh)
+stokes.solve()</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><p><code>refinement=2</code> builds the mesh twice-refined from a coarse base and keeps the
+coarse levels. The solver’s <code>preconditioner</code> property defaults to <code>&quot;auto&quot;</code>,
+which uses geometric full multigrid when the mesh carries a genuine hierarchy —
+<code>len(mesh.dm_hierarchy) &gt; 1</code> — and algebraic multigrid (GAMG) when it does not.
+You can ask for either explicitly:</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-python" style="white-space:pre">stokes.preconditioner = &quot;fmg&quot;     # geometric; warns and falls back if no hierarchy
+stokes.preconditioner = &quot;gamg&quot;    # algebraic
+stokes.preconditioner_settings    # what actually got applied</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><p><code>preconditioner_settings</code> is worth knowing about. It reports the option keys UW3
+has put in the database for this solver, so what was applied can be asserted on
+rather than inferred from how long the solve took.</p><p>Two things about <code>&quot;auto&quot;</code> that are deliberate. It only ever <em>adds</em> geometric
+multigrid to an untouched default: if you have configured the preconditioner
+yourself, it leaves your configuration alone. And on a single-field scalar or
+vector solver it stays with GAMG even when a hierarchy exists, because the
+native geometric path there is unreliable; asking for <code>&quot;fmg&quot;</code> explicitly routes
+it through custom transfers instead. Where a request is declined, the reason is
+recorded in <code>pc_fallbacks</code> rather than being silent.</p><h2 id="a-level-is-a-coarsening-ratio" class="relative group"><span class="heading-text">A level is a coarsening ratio</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#a-level-is-a-coarsening-ratio" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>This is the one that costs the most time when it is wrong.</p><p>A multigrid level earns its place by seeing error that no other level can see
+cheaply. That is a statement about <em>resolution</em>: each level should differ from
+its neighbour by something near a factor of two in cell size. It is not a
+statement about how the mesh was made.</p><p>Refinement engines do not work that way. A pass is how an engine <em>reaches</em> a
+target size — independence conditions cap how many edges may be split at once,
+and a conforming closure cascades — so the number of passes reflects the
+engine’s constraints, not the geometry. Recording one level per pass produces
+levels that coarsen almost nothing. We measured ratios of 1.06, 1.02 and 1.007
+sitting in a hierarchy, each costing a full Galerkin triple product and a
+smoother sweep on every cycle to remove error that its neighbour had already
+removed.</p><p>Cutting a mesh has the same problem in a purer form. A cut re-represents the
+same grid with a surface conformed to it; it adds no resolution at all. Two
+cuts once produced two levels coarsening by 1.11 and 1.17 against a threshold
+of 1.8.</p><p>The cost is not subtle. On a box-fault shear solve, dropping the levels that
+were not genuine coarsenings:</p><div aria-label="table content" class="overflow-auto"><table class=""><tbody><tr class=""><th class="">levels</th><th class="">how</th><th class="">wall clock</th></tr><tr class=""><td class="">9</td><td class="">one per pass</td><td class="">93.7 s</td></tr><tr class=""><td class="">7</td><td class=""><code>mg_coarsening_ratio=2.0</code></td><td class="">47.5 s</td></tr><tr class=""><td class="">5</td><td class=""><code>mg_coarsening_ratio=3.0</code></td><td class=""><strong>23.3 s</strong></td></tr></tbody></table></div><p>Same mesh, same answer, four times the speed.</p><aside class="myst-admonition myst-admonition-warning my-5 shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-gray-50/10 dark:bg-stone-800 overflow-hidden myst-admonition-default rounded border-l-4 border-amber-600"><div class="myst-admonition-header m-0 font-medium py-1 flex min-w-0 text-lg text-amber-600 bg-amber-50 dark:bg-slate-900"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="2rem" height="2rem" class="myst-admonition-header-icon inline-block pl-2 mr-2 self-center flex-none text-amber-600"><path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd"></path></svg><div class="myst-admonition-header-text text-neutral-900 dark:text-white grow self-center overflow-hidden break-words">Measure resolution, not cell count</div></div><div class="myst-admonition-body px-4 py-1"><p>Under adapt-on-top the mesh only grows where the feature is, so a genuine
+halving of <span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></span> can show as a global cell-count ratio near 1. Counting cells to
+decide whether a level is real will tell you that every level is redundant on
+exactly the meshes where the levels matter most.</p></div></aside><h2 id="levels-that-were-not-built-from-each-other" class="relative group"><span class="heading-text">Levels that were not built from each other</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#levels-that-were-not-built-from-each-other" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>The textbook hierarchy is nested: every coarse node is a fine node, every
+coarse cell is a union of fine cells, and the transfer between them follows
+from the refinement relation. When that holds you can write the prolongation
+down exactly, for any element degree, from the parent-cell map alone. With the
+Lagrange basis dual to its nodal points,</p><div id="MP6SuCPRpJ" class="flex my-5 group"><div class="flex-grow overflow-x-auto overflow-y-hidden"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>W</mi><mo>=</mo><mi>B</mi><mtext> </mtext><msup><mi>M</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo separator="true">,</mo><mspace width="2em"/><msub><mi>M</mi><mrow><mi>i</mi><mi>m</mi></mrow></msub><mo>=</mo><msub><mi>μ</mi><mi>m</mi></msub><mo stretchy="false">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false">)</mo><mo separator="true">,</mo><mspace width="2em"/><msub><mi>B</mi><mrow><mi>t</mi><mi>m</mi></mrow></msub><mo>=</mo><msub><mi>μ</mi><mi>m</mi></msub><mo stretchy="false">(</mo><msub><mi>x</mi><mi>t</mi></msub><mo stretchy="false">)</mo><mo separator="true">,</mo></mrow><annotation encoding="application/x-tex">W = B\,M^{-1},
+\qquad
+M_{im} = \mu_m(x_i),
+\qquad
+B_{tm} = \mu_m(x_t),</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.0585em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.10903em;">M</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">1</span></span></span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.10903em;">M</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">im</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">μ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">m</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.0502em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mord mathnormal mtight">m</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">μ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">m</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mpunct">,</span></span></span></span></span></div><div class="relative self-center flex-none pl-2 m-0 text-right select-none"><a class="no-underline text-inherit hover:text-inherit text-inherit hover:text-inherit select-none hover:underline" href="#MP6SuCPRpJ" title="Link to this Equation" aria-label="Link to this Equation">(<!-- -->1<!-- -->)</a></div></div><p>where <span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>μ</mi><mi>m</mi></msub></mrow><annotation encoding="application/x-tex">\mu_m</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal">μ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">m</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span> are the parent cell’s basis functions, <span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>x</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">x_i</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span> its own nodes and
+<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>x</mi><mi>t</mi></msub></mrow><annotation encoding="application/x-tex">x_t</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span> the fine degrees of freedom inside it. No reference element, no
+per-degree formulae, no point location. One detail is not optional: pull the
+coordinates back through the parent’s own vertices before evaluating. Raw
+monomials give a conditioning that grows like <span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>h</mi><mrow><mo>−</mo><mi>k</mi></mrow></msup></mrow><annotation encoding="application/x-tex">h^{-k}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8491em;"></span><span class="mord"><span class="mord mathnormal">h</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8491em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span></span></span></span></span></span></span></span></span></span></span></span></span> — around <span class="">10<sup>6</sup></span> at
+<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mn>3</mn></msub></mrow><annotation encoding="application/x-tex">P_3</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span> — while under the pullback the conditioning depends only on the degree
+and the dimension.</p><p>Often, though, the levels were <em>not</em> built from each other. A mesh that has
+been cut, moved or adapted has coarse levels that are related to the fine one
+geometrically but not combinatorially. Then the transfer has to be constructed
+rather than derived, and UW3 falls back to locating fine degrees of freedom
+inside a triangulation of the coarse degree-of-freedom cloud.</p><p>That fallback works, and it is worth being clear about <em>why</em> it works, because
+it is not the reason one might assume. The triangulation is of the coarse
+<strong>degree-of-freedom points</strong>, and it never consults the mesh cells. How often
+its simplices agree with the actual cells:</p><div aria-label="table content" class="overflow-auto"><table class=""><tbody><tr class=""><th class="">mesh</th><th class="">agreement with real cells</th></tr><tr class=""><td class="">2D uniform, <span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">P_1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></td><td class="">100%</td></tr><tr class=""><td class="">2D adapt child</td><td class="">90.8%</td></tr><tr class=""><td class="">3D uniform, <span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">P_1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></td><td class="">58.8%</td></tr><tr class=""><td class="">3D adapt child</td><td class=""><strong>17.1%</strong></td></tr></tbody></table></div><p>At 17% agreement the construction is not reproducing the mesh in any meaningful
+sense. It works because it reproduces <em>linear functions</em> exactly, and that is
+the property multigrid transfers actually need. Knowing this changes what you
+check when a hierarchy underperforms in 3D: the question is not whether the
+transfer found the right cells, because mostly it did not.</p><h2 id="the-outer-solver-has-to-be-flexible" class="relative group"><span class="heading-text">The outer solver has to be flexible</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#the-outer-solver-has-to-be-flexible" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>This one is not about the hierarchy at all, and it is the single largest effect
+we have measured on a hard nonlinear problem.</p><p>In the Schur factorisation used for Stokes, the velocity block is solved with
+its own Krylov method. That solve is not a passive preconditioner: it computes
+the search direction. Being Krylov, it is inexact, and being inexact, the
+operator effectively applied <em>differs between outer iterations</em>. A non-flexible
+GMRES assumes a fixed preconditioner and its residual recurrence has no
+guarantee against an operator that drifts.</p><p>On a notch problem at refinement 3, varying only this:</p><div aria-label="table content" class="overflow-auto"><table class=""><tbody><tr class=""><th class="">outer</th><th class="">inner rtol</th><th class="">velocity its/step</th><th class="">result</th></tr><tr class=""><td class=""><code>gmres</code></td><td class="">3.3e-08</td><td class="">983</td><td class="">DIVERGED_LINEAR_SOLVE</td></tr><tr class=""><td class=""><code>gmres</code></td><td class="">1e-03</td><td class="">915</td><td class="">DIVERGED_LINEAR_SOLVE</td></tr><tr class=""><td class=""><strong><code>fgmres</code></strong></td><td class="">3.3e-08</td><td class=""><strong>58</strong></td><td class="">no linear failure</td></tr><tr class=""><td class=""><strong><code>fgmres</code></strong></td><td class="">1e-03</td><td class=""><strong>23</strong></td><td class="">no linear failure</td></tr></tbody></table></div><p>Raising the velocity iteration cap from 200 to 2000 changed nothing at all —
+the rows were byte-identical. Loosening the inner tolerance by five orders of
+magnitude while the outer stayed non-flexible was worth 7%. The flexible outer
+Krylov is the entire effect, and once it is in place the same loosening is
+worth a further factor of 2.6.</p><p>The inner solves being deliberately inexact is an old design, inherited from
+Citcom. Two halves of one decision: inexact inner solves require a flexible
+outer method, and <em>how</em> inexact is bounded by requiring the inner solves to
+converge well below the tolerance demanded of the outer one. The factors UW3
+uses — 0.033 for velocity, 0.1 for pressure — are that margin. Their existence
+is principled; their particular sizes are inherited convention.</p><h2 id="what-it-is-worth" class="relative group"><span class="heading-text">What it is worth</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#what-it-is-worth" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>The comparison that matters is against algebraic multigrid, which is what you
+get without a hierarchy and which needs nothing from the mesh.</p><p>On a refined mesh with a genuine hierarchy, geometric multigrid is
+substantially better conditioned, because it is built from the refinement
+relation rather than inferred from the operator’s connectivity — which is
+exactly what mesh anisotropy makes misleading. In the runs behind the
+<a class="link" href="/underworldcode.org-preview/0c9cad6b66/moving-the-mesh-without-remaking-it/">mesh-mover note</a>, a four-level
+<code>pc=mg</code> converged the velocity block in three to four iterations; where the
+hierarchy was lost and the solve fell back to algebraic multigrid, the same
+block took 23.</p><p>The corollary is the reason those two notes are a pair. A hierarchy is a
+capital asset: it is built once and it is what makes the solve cheap. Anything
+that destroys it — remeshing in particular — is not only paying for the
+remesh, it is paying for every solve afterwards until a new hierarchy is built.
+That is what moving the mesh instead of remaking it is protecting.</p><h2 id="using-it" class="relative group"><span class="heading-text">Using it</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#using-it" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-python" style="white-space:pre"># A hierarchy: two refinements from a coarse base, coarse levels kept.
+mesh = uw.meshing.UnstructuredSimplexBox(cellSize=0.05, refinement=2)
+
+stokes = uw.systems.Stokes(mesh)
+stokes.preconditioner = &quot;auto&quot;        # the default: FMG if there is a hierarchy
+stokes.solve()
+
+print(stokes.preconditioner_settings) # what was applied
+print(stokes.pc_fallbacks)            # anything declined, and why</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><p>When adapting, ask for levels by coarsening ratio rather than taking one per
+engine pass:</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-python" style="white-space:pre">child = mesh.adapt(metric, max_levels=3, mg_coarsening_ratio=2.0)</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><div class="uwtn-discuss"><div class="uwtn-discuss-head">Comments</div><div class="uwtn-discuss-body">Discussion of these notes happens in GitHub Discussions, so it stays with the source and is searchable alongside it.</div><div class="uwtn-discuss-links"><a target="_blank" rel="noreferrer" href="https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions?discussions_q=setting-up-full-multigrid" class="link whitespace-nowrap"><span class="link-text whitespace-normal">Read the discussion</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a><a target="_blank" rel="noreferrer" href="https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions/new?category=general&amp;title=setting-up-full-multigrid" class="link whitespace-nowrap"><span class="link-text whitespace-normal">Start one</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a></div></div><div class="myst-backmatter-parts"></div></article></main><script>((a,l)=>{if(!window.history.state||!window.history.state.key){let u=Math.random().toString(32).slice(2);window.history.replaceState({key:u},"")}try{let d=JSON.parse(sessionStorage.getItem(a)||"{}")[l||window.history.state.key];typeof d=="number"&&window.scrollTo(0,d)}catch(u){console.error(u),sessionStorage.removeItem(a)}})("positions", null)</script><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/entry.client-PCJPW7TK.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-AQ2CODAG.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-JJXTQVMA.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-OZE3FFNP.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-RUUCG5OS.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-C4DFGG5C.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-J7TUH54J.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-FZ2S7OYD.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-JEM6JXYA.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-34XIY2DH.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-KQM5FBHR.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-OCWQY3HK.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-7HNKBP4B.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-CUKUDK3R.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-3EBOCCHJ.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-O4VQNZ62.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-4OEDG4JQ.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-GUCIBHGO.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/root-3VHQT63W.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/_shared/chunk-SHVDI3JB.js"/><link rel="modulepreload" href="/underworldcode.org-preview/0c9cad6b66/build/routes/$-O2KOSX5W.js"/><script>window.__remixContext = {"url":"/setting-up-full-multigrid","state":{"loaderData":{"root":{"config":{"version":3,"myst":"1.10.1","title":"Underworld Technical Notes","options":{"hide_footer_links":true,"favicon":"/underworldcode.org-preview/0c9cad6b66/build/uwtn-favicon-b1279d2cd4f5396529c925a41d0decad.ico","logo_text":"Underworld Technical Notes","numbered_references":true,"style":"/underworldcode.org-preview/0c9cad6b66/build/uwtn-a2d44252ed25b05a72e93d4f5f8e1b2d.css"},"nav":[{"title":"About","children":[{"title":"Who we are","url":"/ugcomm"},{"title":"Credits","url":"/credits"},{"title":"How to cite","url":"/how-to-cite-underworld"}]},{"title":"Underworld","children":[{"title":"Introduction to Underworld","url":"/intro-to-underworld"},{"title":"Run in the cloud","url":"/auscope-cloud"},{"title":"Model exchange","url":"/underworld-model-exchange"},{"title":"Publications using Underworld","url":"/publications-using-uw"}]},{"title":"Technical Notes","children":[{"title":"All notes","url":"/notes"},{"title":"Browse by topic","url":"/topics"},{"title":"Submit a note","url":"/submit"}]}],"actions":[],"projects":[{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Technical Notes","description":"Methods, implementation notes, benchmarks and worked examples from the Underworld geodynamics code.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/setting-up-full-multigrid/setting-up-full-multigrid.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"setting-up-full-multigrid","title":"Setting Up Full Multigrid","description":"Geometric multigrid is the fastest preconditioner we have for Stokes on a refined mesh, and most of what decides whether it works is not in the solver options. What counts as a level, how the transfers are built when the levels were not made from each other, and why the outer Krylov has to be flexible.","date":"2026-08-14","thumbnail":"","thumbnailOptimized":"","banner":"","bannerOptimized":"","tags":[],"level":1}]}]},"CONTENT_CDN_PORT":"3100","MODE":"static","BASE_URL":"/underworldcode.org-preview/0c9cad6b66"},"routes/$":{"config":{"version":3,"myst":"1.10.1","title":"Underworld Technical Notes","options":{"hide_footer_links":true,"favicon":"/underworldcode.org-preview/0c9cad6b66/build/uwtn-favicon-b1279d2cd4f5396529c925a41d0decad.ico","logo_text":"Underworld Technical Notes","numbered_references":true,"style":"/underworldcode.org-preview/0c9cad6b66/build/uwtn-a2d44252ed25b05a72e93d4f5f8e1b2d.css"},"nav":[{"title":"About","children":[{"title":"Who we are","url":"/ugcomm"},{"title":"Credits","url":"/credits"},{"title":"How to cite","url":"/how-to-cite-underworld"}]},{"title":"Underworld","children":[{"title":"Introduction to Underworld","url":"/intro-to-underworld"},{"title":"Run in the cloud","url":"/auscope-cloud"},{"title":"Model exchange","url":"/underworld-model-exchange"},{"title":"Publications using Underworld","url":"/publications-using-uw"}]},{"title":"Technical Notes","children":[{"title":"All notes","url":"/notes"},{"title":"Browse by topic","url":"/topics"},{"title":"Submit a note","url":"/submit"}]}],"actions":[],"projects":[{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Technical Notes","description":"Methods, implementation notes, benchmarks and worked examples from the Underworld geodynamics code.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/setting-up-full-multigrid/setting-up-full-multigrid.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"setting-up-full-multigrid","title":"Setting Up Full Multigrid","description":"Geometric multigrid is the fastest preconditioner we have for Stokes on a refined mesh, and most of what decides whether it works is not in the solver options. What counts as a level, how the transfers are built when the levels were not made from each other, and why the outer Krylov has to be flexible.","date":"2026-08-14","thumbnail":"","thumbnailOptimized":"","banner":"","bannerOptimized":"","tags":[],"level":1}]}]},"page":{"version":3,"kind":"Article","sha256":"d3b4f5f5bad49cdb9467f78f5bad625d4ec0aee6edd37b6594ea123dbb8e2743","slug":"setting-up-full-multigrid","location":"/articles/setting-up-full-multigrid/setting-up-full-multigrid.md","dependencies":[],"frontmatter":{"title":"Setting Up Full Multigrid","description":"Geometric multigrid is the fastest preconditioner we have for Stokes on a refined mesh, and most of what decides whether it works is not in the solver options. What counts as a level, how the transfers are built when the levels were not made from each other, and why the outer Krylov has to be flexible.","keywords":["Underworld Code","Tricks of the Trade","development"],"authors":[{"nameParsed":{"literal":"Louis Moresi","given":"Louis","family":"Moresi"},"name":"Louis Moresi","orcid":"0000-0003-3685-174X","affiliations":["Australian National University"],"id":"contributors-setting-up-full-multigrid-generated-uid-0"}],"affiliations":[{"id":"Australian National University","name":"Australian National University"}],"date":"2026-08-14","license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true}},"exports":[{"format":"md","filename":"setting-up-full-multigrid.md","url":"/underworldcode.org-preview/0c9cad6b66/build/setting-up-full-mult-3b43e0260e317e4aa57d552b4eafdb52.md"},{"format":"typst","filename":"setting-up-full-multigrid.pdf","url":"/underworldcode.org-preview/0c9cad6b66/build/setting-up-full-mult-ac91e8aace8ec41ef5e3b4d7a1c8a181.pdf"}],"open_access":true,"github":"https://github.com/underworld-technical-notes/underworldcode.org","source_url":"https://github.com/underworld-technical-notes/underworldcode.org/blob/main/articles/setting-up-full-multigrid/setting-up-full-multigrid.md","edit_url":"https://github.com/underworld-technical-notes/underworldcode.org/edit/main/articles/setting-up-full-multigrid/setting-up-full-multigrid.md"},"mdast":{"type":"root","children":[{"type":"block","children":[{"type":"paragraph","position":{"start":{"line":30,"column":1},"end":{"line":33,"column":1}},"children":[{"type":"text","value":"A Stokes solve is where the time goes, and multigrid is how we stop it going\nthere. The idea is old and well described: solve the problem on a sequence of\ngrids, let each grid remove the part of the error it can see cheaply, and the\nwork per unknown stops growing with the size of the problem.","position":{"start":{"line":30,"column":1},"end":{"line":30,"column":1}},"key":"k5c6i9nEPh"}],"key":"LZpM9FPLb1"},{"type":"paragraph","position":{"start":{"line":35,"column":1},"end":{"line":41,"column":1}},"children":[{"type":"text","value":"What is much less well described is what to do when the hierarchy you have is\nnot the tidy one in the textbook. Ours rarely is. A mesh gets refined where a\nfault or a boundary layer needs it, so the levels differ by a factor that is\nnot two. A mesh gets cut, or moved, or adapted between timesteps, so the levels\nwere not all built from one another. This note is about the parts that decide\nwhether multigrid actually helps on a mesh like that, and none of them are the\noptions you type into PETSc.","position":{"start":{"line":35,"column":1},"end":{"line":35,"column":1}},"key":"pqKy3KLITZ"}],"key":"POWSkpjqJO"},{"type":"heading","depth":2,"position":{"start":{"line":43,"column":1},"end":{"line":43,"column":1}},"children":[{"type":"text","value":"Turning it on","position":{"start":{"line":43,"column":1},"end":{"line":43,"column":1}},"key":"H4n9M3zZ1v"}],"identifier":"turning-it-on","label":"Turning it on","html_id":"turning-it-on","implicit":true,"key":"koecaU0U8Q"},{"type":"paragraph","position":{"start":{"line":45,"column":1},"end":{"line":45,"column":1}},"children":[{"type":"text","value":"Build the mesh with a refinement hierarchy and it is already on:","position":{"start":{"line":45,"column":1},"end":{"line":45,"column":1}},"key":"TGLKsyyCgn"}],"key":"l13l0GAEUu"},{"type":"code","lang":"python","value":"mesh = uw.meshing.UnstructuredSimplexBox(cellSize=0.05, refinement=2)\nstokes = uw.systems.Stokes(mesh)\nstokes.solve()","position":{"start":{"line":47,"column":1},"end":{"line":51,"column":1}},"key":"TKQkI6ZiN9"},{"type":"paragraph","position":{"start":{"line":53,"column":1},"end":{"line":57,"column":1}},"children":[{"type":"inlineCode","value":"refinement=2","position":{"start":{"line":53,"column":1},"end":{"line":53,"column":1}},"key":"s47aG68FTl"},{"type":"text","value":" builds the mesh twice-refined from a coarse base and keeps the\ncoarse levels. The solver’s ","position":{"start":{"line":53,"column":1},"end":{"line":53,"column":1}},"key":"sYyc87yyGU"},{"type":"inlineCode","value":"preconditioner","position":{"start":{"line":53,"column":1},"end":{"line":53,"column":1}},"key":"wl4yWBgJUz"},{"type":"text","value":" property defaults to ","position":{"start":{"line":53,"column":1},"end":{"line":53,"column":1}},"key":"u41icqRIZ7"},{"type":"inlineCode","value":"\"auto\"","position":{"start":{"line":53,"column":1},"end":{"line":53,"column":1}},"key":"M6wsz4ocd7"},{"type":"text","value":",\nwhich uses geometric full multigrid when the mesh carries a genuine hierarchy —\n","position":{"start":{"line":53,"column":1},"end":{"line":53,"column":1}},"key":"xySWC3W45B"},{"type":"inlineCode","value":"len(mesh.dm_hierarchy) \u003e 1","position":{"start":{"line":53,"column":1},"end":{"line":53,"column":1}},"key":"PilYnPB2YP"},{"type":"text","value":" — and algebraic multigrid (GAMG) when it does not.\nYou can ask for either explicitly:","position":{"start":{"line":53,"column":1},"end":{"line":53,"column":1}},"key":"xU7vMN05Ty"}],"key":"X6wmQsvNp3"},{"type":"code","lang":"python","value":"stokes.preconditioner = \"fmg\"     # geometric; warns and falls back if no hierarchy\nstokes.preconditioner = \"gamg\"    # algebraic\nstokes.preconditioner_settings    # what actually got applied","position":{"start":{"line":59,"column":1},"end":{"line":63,"column":1}},"key":"QhfylcEMMP"},{"type":"paragraph","position":{"start":{"line":65,"column":1},"end":{"line":67,"column":1}},"children":[{"type":"inlineCode","value":"preconditioner_settings","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"K9q8ZFRSeS"},{"type":"text","value":" is worth knowing about. It reports the option keys UW3\nhas put in the database for this solver, so what was applied can be asserted on\nrather than inferred from how long the solve took.","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"gImX8f6lgE"}],"key":"HsQaRxhbkz"},{"type":"paragraph","position":{"start":{"line":69,"column":1},"end":{"line":75,"column":1}},"children":[{"type":"text","value":"Two things about ","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"pUSZuGO3TV"},{"type":"inlineCode","value":"\"auto\"","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"qveQHZSNrS"},{"type":"text","value":" that are deliberate. It only ever ","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"hoXq6FeAa0"},{"type":"emphasis","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"children":[{"type":"text","value":"adds","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"R4Wt5FTrhk"}],"key":"ImhkWNAZfd"},{"type":"text","value":" geometric\nmultigrid to an untouched default: if you have configured the preconditioner\nyourself, it leaves your configuration alone. And on a single-field scalar or\nvector solver it stays with GAMG even when a hierarchy exists, because the\nnative geometric path there is unreliable; asking for ","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"f95HYpt1wd"},{"type":"inlineCode","value":"\"fmg\"","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"BplZhNHBO4"},{"type":"text","value":" explicitly routes\nit through custom transfers instead. Where a request is declined, the reason is\nrecorded in ","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"lGsKOPWXEF"},{"type":"inlineCode","value":"pc_fallbacks","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"mVnOccSofp"},{"type":"text","value":" rather than being silent.","position":{"start":{"line":69,"column":1},"end":{"line":69,"column":1}},"key":"gAbll8Zo63"}],"key":"CyQtVhDdzn"},{"type":"heading","depth":2,"position":{"start":{"line":77,"column":1},"end":{"line":77,"column":1}},"children":[{"type":"text","value":"A level is a coarsening ratio","position":{"start":{"line":77,"column":1},"end":{"line":77,"column":1}},"key":"fQstehQCPd"}],"identifier":"a-level-is-a-coarsening-ratio","label":"A level is a coarsening ratio","html_id":"a-level-is-a-coarsening-ratio","implicit":true,"key":"uIRMHDtU5d"},{"type":"paragraph","position":{"start":{"line":79,"column":1},"end":{"line":79,"column":1}},"children":[{"type":"text","value":"This is the one that costs the most time when it is wrong.","position":{"start":{"line":79,"column":1},"end":{"line":79,"column":1}},"key":"y80yd2gbJV"}],"key":"DwE9MD5fdP"},{"type":"paragraph","position":{"start":{"line":81,"column":1},"end":{"line":84,"column":1}},"children":[{"type":"text","value":"A multigrid level earns its place by seeing error that no other level can see\ncheaply. That is a statement about ","position":{"start":{"line":81,"column":1},"end":{"line":81,"column":1}},"key":"K0IxidKKnR"},{"type":"emphasis","position":{"start":{"line":81,"column":1},"end":{"line":81,"column":1}},"children":[{"type":"text","value":"resolution","position":{"start":{"line":81,"column":1},"end":{"line":81,"column":1}},"key":"BZTNzDkt3I"}],"key":"SCyZQPZzib"},{"type":"text","value":": each level should differ from\nits neighbour by something near a factor of two in cell size. It is not a\nstatement about how the mesh was made.","position":{"start":{"line":81,"column":1},"end":{"line":81,"column":1}},"key":"q1v97xEEjl"}],"key":"aGluGxtiKQ"},{"type":"paragraph","position":{"start":{"line":86,"column":1},"end":{"line":93,"column":1}},"children":[{"type":"text","value":"Refinement engines do not work that way. A pass is how an engine ","position":{"start":{"line":86,"column":1},"end":{"line":86,"column":1}},"key":"Y7kZfqHi6A"},{"type":"emphasis","position":{"start":{"line":86,"column":1},"end":{"line":86,"column":1}},"children":[{"type":"text","value":"reaches","position":{"start":{"line":86,"column":1},"end":{"line":86,"column":1}},"key":"KSGxyjEDpF"}],"key":"SimRmhm4n2"},{"type":"text","value":" a\ntarget size — independence conditions cap how many edges may be split at once,\nand a conforming closure cascades — so the number of passes reflects the\nengine’s constraints, not the geometry. Recording one level per pass produces\nlevels that coarsen almost nothing. We measured ratios of 1.06, 1.02 and 1.007\nsitting in a hierarchy, each costing a full Galerkin triple product and a\nsmoother sweep on every cycle to remove error that its neighbour had already\nremoved.","position":{"start":{"line":86,"column":1},"end":{"line":86,"column":1}},"key":"H42EbBGltT"}],"key":"dIYDrzPBFL"},{"type":"paragraph","position":{"start":{"line":95,"column":1},"end":{"line":98,"column":1}},"children":[{"type":"text","value":"Cutting a mesh has the same problem in a purer form. A cut re-represents the\nsame grid with a surface conformed to it; it adds no resolution at all. Two\ncuts once produced two levels coarsening by 1.11 and 1.17 against a threshold\nof 1.8.","position":{"start":{"line":95,"column":1},"end":{"line":95,"column":1}},"key":"Y2jfl9eGI1"}],"key":"ClRY0cppxb"},{"type":"paragraph","position":{"start":{"line":100,"column":1},"end":{"line":101,"column":1}},"children":[{"type":"text","value":"The cost is not subtle. On a box-fault shear solve, dropping the levels that\nwere not genuine coarsenings:","position":{"start":{"line":100,"column":1},"end":{"line":100,"column":1}},"key":"sTGYzMHqCX"}],"key":"RLo2rwPjWw"},{"type":"table","position":{"start":{"line":103,"column":1},"end":{"line":107,"column":1}},"children":[{"type":"tableRow","position":{"start":{"line":103,"column":1},"end":{"line":103,"column":1}},"children":[{"type":"tableCell","header":true,"position":{"start":{"line":103,"column":1},"end":{"line":103,"column":1}},"children":[{"type":"text","value":"levels","position":{"start":{"line":103,"column":1},"end":{"line":103,"column":1}},"key":"K0Oq1foDFA"}],"key":"vZh515Wt5M"},{"type":"tableCell","header":true,"position":{"start":{"line":103,"column":1},"end":{"line":103,"column":1}},"children":[{"type":"text","value":"how","position":{"start":{"line":103,"column":1},"end":{"line":103,"column":1}},"key":"jXA0oe4CC9"}],"key":"qaW18TcOoQ"},{"type":"tableCell","header":true,"position":{"start":{"line":103,"column":1},"end":{"line":103,"column":1}},"children":[{"type":"text","value":"wall clock","position":{"start":{"line":103,"column":1},"end":{"line":103,"column":1}},"key":"feXCBsdrt7"}],"key":"ZdgXhMixWK"}],"key":"vlDLyAr22T"},{"type":"tableRow","position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"children":[{"type":"text","value":"9","position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"key":"FQqyDlxWnV"}],"key":"TDXzRNRg9U"},{"type":"tableCell","position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"children":[{"type":"text","value":"one per pass","position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"key":"h2ILNvffkA"}],"key":"vQuqh0qv6F"},{"type":"tableCell","position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"children":[{"type":"text","value":"93.7 s","position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"key":"YZORYq8L9N"}],"key":"R1oZUKQohj"}],"key":"ij7S9sA1t0"},{"type":"tableRow","position":{"start":{"line":106,"column":1},"end":{"line":106,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":106,"column":1},"end":{"line":106,"column":1}},"children":[{"type":"text","value":"7","position":{"start":{"line":106,"column":1},"end":{"line":106,"column":1}},"key":"XOZxmmYyZm"}],"key":"WblPtdvoPX"},{"type":"tableCell","position":{"start":{"line":106,"column":1},"end":{"line":106,"column":1}},"children":[{"type":"inlineCode","value":"mg_coarsening_ratio=2.0","position":{"start":{"line":106,"column":1},"end":{"line":106,"column":1}},"key":"UcHNlEbhut"}],"key":"pI7MwmJs7p"},{"type":"tableCell","position":{"start":{"line":106,"column":1},"end":{"line":106,"column":1}},"children":[{"type":"text","value":"47.5 s","position":{"start":{"line":106,"column":1},"end":{"line":106,"column":1}},"key":"WJDrZ9CqZr"}],"key":"kZFYwMGUGw"}],"key":"pvOclLFwYk"},{"type":"tableRow","position":{"start":{"line":107,"column":1},"end":{"line":107,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":107,"column":1},"end":{"line":107,"column":1}},"children":[{"type":"text","value":"5","position":{"start":{"line":107,"column":1},"end":{"line":107,"column":1}},"key":"dWoIt1C2cR"}],"key":"YiumqBEL6p"},{"type":"tableCell","position":{"start":{"line":107,"column":1},"end":{"line":107,"column":1}},"children":[{"type":"inlineCode","value":"mg_coarsening_ratio=3.0","position":{"start":{"line":107,"column":1},"end":{"line":107,"column":1}},"key":"dAUd6XesIc"}],"key":"xlnYNfMchk"},{"type":"tableCell","position":{"start":{"line":107,"column":1},"end":{"line":107,"column":1}},"children":[{"type":"strong","position":{"start":{"line":107,"column":1},"end":{"line":107,"column":1}},"children":[{"type":"text","value":"23.3 s","position":{"start":{"line":107,"column":1},"end":{"line":107,"column":1}},"key":"RrAhdGQHBi"}],"key":"RY6k1HxRgq"}],"key":"T7Ab2WVO1u"}],"key":"vhnRr3wHr9"}],"key":"S4wRUNaytG"},{"type":"paragraph","position":{"start":{"line":109,"column":1},"end":{"line":109,"column":1}},"children":[{"type":"text","value":"Same mesh, same answer, four times the speed.","position":{"start":{"line":109,"column":1},"end":{"line":109,"column":1}},"key":"akucG0BbmU"}],"key":"keq1KHVeHF"},{"type":"admonition","kind":"warning","children":[{"type":"admonitionTitle","children":[{"type":"text","value":"Measure resolution, not cell count","position":{"start":{"line":111,"column":1},"end":{"line":111,"column":1}},"key":"Cf0RkcC3xh"}],"key":"GLiDMpGESv"},{"type":"paragraph","position":{"start":{"line":112,"column":1},"end":{"line":115,"column":1}},"children":[{"type":"text","value":"Under adapt-on-top the mesh only grows where the feature is, so a genuine\nhalving of ","position":{"start":{"line":112,"column":1},"end":{"line":112,"column":1}},"key":"T7p0IFjpSO"},{"type":"inlineMath","value":"h","position":{"start":{"line":112,"column":1},"end":{"line":112,"column":1}},"html":"\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmi\u003eh\u003c/mi\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003eh\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.6944em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord mathnormal\"\u003eh\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","key":"KU3cNBWyF7"},{"type":"text","value":" can show as a global cell-count ratio near 1. Counting cells to\ndecide whether a level is real will tell you that every level is redundant on\nexactly the meshes where the levels matter most.","position":{"start":{"line":112,"column":1},"end":{"line":112,"column":1}},"key":"T1YymMEhkZ"}],"key":"KGpe961XFg"}],"key":"LKDWQalFBs"},{"type":"heading","depth":2,"position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"children":[{"type":"text","value":"Levels that were not built from each other","position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"key":"VUNlOAKkFH"}],"identifier":"levels-that-were-not-built-from-each-other","label":"Levels that were not built from each other","html_id":"levels-that-were-not-built-from-each-other","implicit":true,"key":"J6PA7kYoOX"},{"type":"paragraph","position":{"start":{"line":120,"column":1},"end":{"line":124,"column":1}},"children":[{"type":"text","value":"The textbook hierarchy is nested: every coarse node is a fine node, every\ncoarse cell is a union of fine cells, and the transfer between them follows\nfrom the refinement relation. When that holds you can write the prolongation\ndown exactly, for any element degree, from the parent-cell map alone. With the\nLagrange basis dual to its nodal points,","position":{"start":{"line":120,"column":1},"end":{"line":120,"column":1}},"key":"VT4CjXuoGU"}],"key":"JVlOyf40nl"},{"type":"math","value":"W = B\\,M^{-1},\n\\qquad\nM_{im} = \\mu_m(x_i),\n\\qquad\nB_{tm} = \\mu_m(x_t),","position":{"start":{"line":126,"column":1},"end":{"line":132,"column":1}},"html":"\u003cspan class=\"katex-display\"\u003e\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmi\u003eW\u003c/mi\u003e\u003cmo\u003e=\u003c/mo\u003e\u003cmi\u003eB\u003c/mi\u003e\u003cmtext\u003e \u003c/mtext\u003e\u003cmsup\u003e\u003cmi\u003eM\u003c/mi\u003e\u003cmrow\u003e\u003cmo\u003e−\u003c/mo\u003e\u003cmn\u003e1\u003c/mn\u003e\u003c/mrow\u003e\u003c/msup\u003e\u003cmo separator=\"true\"\u003e,\u003c/mo\u003e\u003cmspace width=\"2em\"/\u003e\u003cmsub\u003e\u003cmi\u003eM\u003c/mi\u003e\u003cmrow\u003e\u003cmi\u003ei\u003c/mi\u003e\u003cmi\u003em\u003c/mi\u003e\u003c/mrow\u003e\u003c/msub\u003e\u003cmo\u003e=\u003c/mo\u003e\u003cmsub\u003e\u003cmi\u003eμ\u003c/mi\u003e\u003cmi\u003em\u003c/mi\u003e\u003c/msub\u003e\u003cmo stretchy=\"false\"\u003e(\u003c/mo\u003e\u003cmsub\u003e\u003cmi\u003ex\u003c/mi\u003e\u003cmi\u003ei\u003c/mi\u003e\u003c/msub\u003e\u003cmo stretchy=\"false\"\u003e)\u003c/mo\u003e\u003cmo separator=\"true\"\u003e,\u003c/mo\u003e\u003cmspace width=\"2em\"/\u003e\u003cmsub\u003e\u003cmi\u003eB\u003c/mi\u003e\u003cmrow\u003e\u003cmi\u003et\u003c/mi\u003e\u003cmi\u003em\u003c/mi\u003e\u003c/mrow\u003e\u003c/msub\u003e\u003cmo\u003e=\u003c/mo\u003e\u003cmsub\u003e\u003cmi\u003eμ\u003c/mi\u003e\u003cmi\u003em\u003c/mi\u003e\u003c/msub\u003e\u003cmo stretchy=\"false\"\u003e(\u003c/mo\u003e\u003cmsub\u003e\u003cmi\u003ex\u003c/mi\u003e\u003cmi\u003et\u003c/mi\u003e\u003c/msub\u003e\u003cmo stretchy=\"false\"\u003e)\u003c/mo\u003e\u003cmo separator=\"true\"\u003e,\u003c/mo\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003eW = B\\,M^{-1},\n\\qquad\nM_{im} = \\mu_m(x_i),\n\\qquad\nB_{tm} = \\mu_m(x_t),\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.6833em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord mathnormal\" style=\"margin-right:0.13889em;\"\u003eW\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.2778em;\"\u003e\u003c/span\u003e\u003cspan class=\"mrel\"\u003e=\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.2778em;\"\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:1.0585em;vertical-align:-0.1944em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord mathnormal\" style=\"margin-right:0.05017em;\"\u003eB\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.1667em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\" style=\"margin-right:0.10903em;\"\u003eM\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.8641em;\"\u003e\u003cspan style=\"top:-3.113em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e−\u003c/span\u003e\u003cspan class=\"mord mtight\"\u003e1\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"mpunct\"\u003e,\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:2em;\"\u003e\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.1667em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\" style=\"margin-right:0.10903em;\"\u003eM\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.3117em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:-0.109em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003eim\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.2778em;\"\u003e\u003c/span\u003e\u003cspan class=\"mrel\"\u003e=\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.2778em;\"\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:1em;vertical-align:-0.25em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\"\u003eμ\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.1514em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:0em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003em\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"mopen\"\u003e(\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\"\u003ex\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.3117em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:0em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003ei\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"mclose\"\u003e)\u003c/span\u003e\u003cspan class=\"mpunct\"\u003e,\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:2em;\"\u003e\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.1667em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\" style=\"margin-right:0.05017em;\"\u003eB\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.2806em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:-0.0502em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003et\u003c/span\u003e\u003cspan class=\"mord mathnormal mtight\"\u003em\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.2778em;\"\u003e\u003c/span\u003e\u003cspan class=\"mrel\"\u003e=\u003c/span\u003e\u003cspan class=\"mspace\" style=\"margin-right:0.2778em;\"\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:1em;vertical-align:-0.25em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\"\u003eμ\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.1514em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:0em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003em\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"mopen\"\u003e(\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\"\u003ex\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.2806em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:0em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003et\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"mclose\"\u003e)\u003c/span\u003e\u003cspan class=\"mpunct\"\u003e,\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","enumerator":"1","key":"MP6SuCPRpJ"},{"type":"paragraph","position":{"start":{"line":134,"column":1},"end":{"line":140,"column":1}},"children":[{"type":"text","value":"where ","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"key":"lLiFhAxUbb"},{"type":"inlineMath","value":"\\mu_m","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"html":"\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmsub\u003e\u003cmi\u003eμ\u003c/mi\u003e\u003cmi\u003em\u003c/mi\u003e\u003c/msub\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003e\\mu_m\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.625em;vertical-align:-0.1944em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\"\u003eμ\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.1514em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:0em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003em\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","key":"QUHi4TGKTB"},{"type":"text","value":" are the parent cell’s basis functions, ","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"key":"zUQEZJwKN9"},{"type":"inlineMath","value":"x_i","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"html":"\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmsub\u003e\u003cmi\u003ex\u003c/mi\u003e\u003cmi\u003ei\u003c/mi\u003e\u003c/msub\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003ex_i\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.5806em;vertical-align:-0.15em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\"\u003ex\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.3117em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:0em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003ei\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","key":"ymYsqEbm7s"},{"type":"text","value":" its own nodes and\n","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"key":"OphND5qIW5"},{"type":"inlineMath","value":"x_t","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"html":"\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmsub\u003e\u003cmi\u003ex\u003c/mi\u003e\u003cmi\u003et\u003c/mi\u003e\u003c/msub\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003ex_t\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.5806em;vertical-align:-0.15em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\"\u003ex\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.2806em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:0em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mathnormal mtight\"\u003et\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","key":"kDWODXZbaa"},{"type":"text","value":" the fine degrees of freedom inside it. No reference element, no\nper-degree formulae, no point location. One detail is not optional: pull the\ncoordinates back through the parent’s own vertices before evaluating. Raw\nmonomials give a conditioning that grows like ","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"key":"ogOf8uBlcS"},{"type":"inlineMath","value":"h^{-k}","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"html":"\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmsup\u003e\u003cmi\u003eh\u003c/mi\u003e\u003cmrow\u003e\u003cmo\u003e−\u003c/mo\u003e\u003cmi\u003ek\u003c/mi\u003e\u003c/mrow\u003e\u003c/msup\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003eh^{-k}\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.8491em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\"\u003eh\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.8491em;\"\u003e\u003cspan style=\"top:-3.063em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e−\u003c/span\u003e\u003cspan class=\"mord mathnormal mtight\" style=\"margin-right:0.03148em;\"\u003ek\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","key":"fx56cW2kg9"},{"type":"text","value":" — around ","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"key":"lfZvtmrWMn"},{"type":"span","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"children":[{"type":"text","value":"10","key":"jb8o6UQjTj"},{"type":"superscript","children":[{"type":"text","value":"6","key":"TgwPwwtNug"}],"key":"Xw44ZWRRzS"}],"key":"kyWlcodjDE"},{"type":"text","value":" at\n","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"key":"Kr6Hiq9MSZ"},{"type":"inlineMath","value":"P_3","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"html":"\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmsub\u003e\u003cmi\u003eP\u003c/mi\u003e\u003cmn\u003e3\u003c/mn\u003e\u003c/msub\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003eP_3\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.8333em;vertical-align:-0.15em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\" style=\"margin-right:0.13889em;\"\u003eP\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.3011em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e3\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","key":"YhlqB2i90I"},{"type":"text","value":" — while under the pullback the conditioning depends only on the degree\nand the dimension.","position":{"start":{"line":134,"column":1},"end":{"line":134,"column":1}},"key":"Bvlfqkyy7Y"}],"key":"xQNnVgYgWO"},{"type":"paragraph","position":{"start":{"line":142,"column":1},"end":{"line":146,"column":1}},"children":[{"type":"text","value":"Often, though, the levels were ","position":{"start":{"line":142,"column":1},"end":{"line":142,"column":1}},"key":"kV9KUyxbSq"},{"type":"emphasis","position":{"start":{"line":142,"column":1},"end":{"line":142,"column":1}},"children":[{"type":"text","value":"not","position":{"start":{"line":142,"column":1},"end":{"line":142,"column":1}},"key":"yjowSJN6jS"}],"key":"xGgGIoUw6N"},{"type":"text","value":" built from each other. A mesh that has\nbeen cut, moved or adapted has coarse levels that are related to the fine one\ngeometrically but not combinatorially. Then the transfer has to be constructed\nrather than derived, and UW3 falls back to locating fine degrees of freedom\ninside a triangulation of the coarse degree-of-freedom cloud.","position":{"start":{"line":142,"column":1},"end":{"line":142,"column":1}},"key":"Imgyg6vtUk"}],"key":"Bcy4ZnxbIO"},{"type":"paragraph","position":{"start":{"line":148,"column":1},"end":{"line":151,"column":1}},"children":[{"type":"text","value":"That fallback works, and it is worth being clear about ","position":{"start":{"line":148,"column":1},"end":{"line":148,"column":1}},"key":"WS5rJdmUgS"},{"type":"emphasis","position":{"start":{"line":148,"column":1},"end":{"line":148,"column":1}},"children":[{"type":"text","value":"why","position":{"start":{"line":148,"column":1},"end":{"line":148,"column":1}},"key":"Hv64Wmp4Fz"}],"key":"cLhEpmssQC"},{"type":"text","value":" it works, because\nit is not the reason one might assume. The triangulation is of the coarse\n","position":{"start":{"line":148,"column":1},"end":{"line":148,"column":1}},"key":"tniAZGLX0o"},{"type":"strong","position":{"start":{"line":148,"column":1},"end":{"line":148,"column":1}},"children":[{"type":"text","value":"degree-of-freedom points","position":{"start":{"line":148,"column":1},"end":{"line":148,"column":1}},"key":"CMHle3Wqwo"}],"key":"SGT1ckYdJJ"},{"type":"text","value":", and it never consults the mesh cells. How often\nits simplices agree with the actual cells:","position":{"start":{"line":148,"column":1},"end":{"line":148,"column":1}},"key":"R9feLUBKhB"}],"key":"Pfum8LBZ9w"},{"type":"table","position":{"start":{"line":153,"column":1},"end":{"line":158,"column":1}},"children":[{"type":"tableRow","position":{"start":{"line":153,"column":1},"end":{"line":153,"column":1}},"children":[{"type":"tableCell","header":true,"position":{"start":{"line":153,"column":1},"end":{"line":153,"column":1}},"children":[{"type":"text","value":"mesh","position":{"start":{"line":153,"column":1},"end":{"line":153,"column":1}},"key":"osPoj4cVCR"}],"key":"cmYZuwVCyi"},{"type":"tableCell","header":true,"position":{"start":{"line":153,"column":1},"end":{"line":153,"column":1}},"children":[{"type":"text","value":"agreement with real cells","position":{"start":{"line":153,"column":1},"end":{"line":153,"column":1}},"key":"Jcm0eHdolm"}],"key":"O29bMLgbz1"}],"key":"kKwbR2kkir"},{"type":"tableRow","position":{"start":{"line":155,"column":1},"end":{"line":155,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":155,"column":1},"end":{"line":155,"column":1}},"children":[{"type":"text","value":"2D uniform, ","position":{"start":{"line":155,"column":1},"end":{"line":155,"column":1}},"key":"Oxz0Q5OdZx"},{"type":"inlineMath","value":"P_1","position":{"start":{"line":155,"column":1},"end":{"line":155,"column":1}},"html":"\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmsub\u003e\u003cmi\u003eP\u003c/mi\u003e\u003cmn\u003e1\u003c/mn\u003e\u003c/msub\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003eP_1\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.8333em;vertical-align:-0.15em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\" style=\"margin-right:0.13889em;\"\u003eP\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.3011em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e1\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","key":"beBtFxX8VE"}],"key":"jibUnnFIri"},{"type":"tableCell","position":{"start":{"line":155,"column":1},"end":{"line":155,"column":1}},"children":[{"type":"text","value":"100%","position":{"start":{"line":155,"column":1},"end":{"line":155,"column":1}},"key":"otXgVZWx0a"}],"key":"Fi2Pg5pRJP"}],"key":"Y8VxYXkJGv"},{"type":"tableRow","position":{"start":{"line":156,"column":1},"end":{"line":156,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":156,"column":1},"end":{"line":156,"column":1}},"children":[{"type":"text","value":"2D adapt child","position":{"start":{"line":156,"column":1},"end":{"line":156,"column":1}},"key":"c6TLCfTh93"}],"key":"BAnRNlOpL7"},{"type":"tableCell","position":{"start":{"line":156,"column":1},"end":{"line":156,"column":1}},"children":[{"type":"text","value":"90.8%","position":{"start":{"line":156,"column":1},"end":{"line":156,"column":1}},"key":"BJEw48YuPw"}],"key":"eVxqQNTA7o"}],"key":"HujFwJJT83"},{"type":"tableRow","position":{"start":{"line":157,"column":1},"end":{"line":157,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":157,"column":1},"end":{"line":157,"column":1}},"children":[{"type":"text","value":"3D uniform, ","position":{"start":{"line":157,"column":1},"end":{"line":157,"column":1}},"key":"npA1t2IBrK"},{"type":"inlineMath","value":"P_1","position":{"start":{"line":157,"column":1},"end":{"line":157,"column":1}},"html":"\u003cspan class=\"katex\"\u003e\u003cspan class=\"katex-mathml\"\u003e\u003cmath xmlns=\"http://www.w3.org/1998/Math/MathML\"\u003e\u003csemantics\u003e\u003cmrow\u003e\u003cmsub\u003e\u003cmi\u003eP\u003c/mi\u003e\u003cmn\u003e1\u003c/mn\u003e\u003c/msub\u003e\u003c/mrow\u003e\u003cannotation encoding=\"application/x-tex\"\u003eP_1\u003c/annotation\u003e\u003c/semantics\u003e\u003c/math\u003e\u003c/span\u003e\u003cspan class=\"katex-html\" aria-hidden=\"true\"\u003e\u003cspan class=\"base\"\u003e\u003cspan class=\"strut\" style=\"height:0.8333em;vertical-align:-0.15em;\"\u003e\u003c/span\u003e\u003cspan class=\"mord\"\u003e\u003cspan class=\"mord mathnormal\" style=\"margin-right:0.13889em;\"\u003eP\u003c/span\u003e\u003cspan class=\"msupsub\"\u003e\u003cspan class=\"vlist-t vlist-t2\"\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.3011em;\"\u003e\u003cspan style=\"top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;\"\u003e\u003cspan class=\"pstrut\" style=\"height:2.7em;\"\u003e\u003c/span\u003e\u003cspan class=\"sizing reset-size6 size3 mtight\"\u003e\u003cspan class=\"mord mtight\"\u003e1\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-s\"\u003e​\u003c/span\u003e\u003c/span\u003e\u003cspan class=\"vlist-r\"\u003e\u003cspan class=\"vlist\" style=\"height:0.15em;\"\u003e\u003cspan\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e\u003c/span\u003e","key":"aGZqS7B4jk"}],"key":"b2Ys7qXjx2"},{"type":"tableCell","position":{"start":{"line":157,"column":1},"end":{"line":157,"column":1}},"children":[{"type":"text","value":"58.8%","position":{"start":{"line":157,"column":1},"end":{"line":157,"column":1}},"key":"QknSfJZChk"}],"key":"tqBSxGAK4Q"}],"key":"inSFwsTwDR"},{"type":"tableRow","position":{"start":{"line":158,"column":1},"end":{"line":158,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":158,"column":1},"end":{"line":158,"column":1}},"children":[{"type":"text","value":"3D adapt child","position":{"start":{"line":158,"column":1},"end":{"line":158,"column":1}},"key":"tMbWaLwtJN"}],"key":"noxCu8rdbI"},{"type":"tableCell","position":{"start":{"line":158,"column":1},"end":{"line":158,"column":1}},"children":[{"type":"strong","position":{"start":{"line":158,"column":1},"end":{"line":158,"column":1}},"children":[{"type":"text","value":"17.1%","position":{"start":{"line":158,"column":1},"end":{"line":158,"column":1}},"key":"V8OfnOIGh6"}],"key":"qBldABUCx7"}],"key":"A3Hwl0MjIR"}],"key":"St3YNe7tcL"}],"key":"ksvJue1hvw"},{"type":"paragraph","position":{"start":{"line":160,"column":1},"end":{"line":164,"column":1}},"children":[{"type":"text","value":"At 17% agreement the construction is not reproducing the mesh in any meaningful\nsense. It works because it reproduces ","position":{"start":{"line":160,"column":1},"end":{"line":160,"column":1}},"key":"mKGkgeVkOn"},{"type":"emphasis","position":{"start":{"line":160,"column":1},"end":{"line":160,"column":1}},"children":[{"type":"text","value":"linear functions","position":{"start":{"line":160,"column":1},"end":{"line":160,"column":1}},"key":"IPFpN7WLYG"}],"key":"Kr5sGhWcM5"},{"type":"text","value":" exactly, and that is\nthe property multigrid transfers actually need. Knowing this changes what you\ncheck when a hierarchy underperforms in 3D: the question is not whether the\ntransfer found the right cells, because mostly it did not.","position":{"start":{"line":160,"column":1},"end":{"line":160,"column":1}},"key":"j4YwqXCoOk"}],"key":"UHwK34vwWW"},{"type":"heading","depth":2,"position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"children":[{"type":"text","value":"The outer solver has to be flexible","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"kYGTQwDSJA"}],"identifier":"the-outer-solver-has-to-be-flexible","label":"The outer solver has to be flexible","html_id":"the-outer-solver-has-to-be-flexible","implicit":true,"key":"rJWrWKdX2F"},{"type":"paragraph","position":{"start":{"line":168,"column":1},"end":{"line":169,"column":1}},"children":[{"type":"text","value":"This one is not about the hierarchy at all, and it is the single largest effect\nwe have measured on a hard nonlinear problem.","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"key":"rJaqaFbQvm"}],"key":"dJLDSHm4X3"},{"type":"paragraph","position":{"start":{"line":171,"column":1},"end":{"line":176,"column":1}},"children":[{"type":"text","value":"In the Schur factorisation used for Stokes, the velocity block is solved with\nits own Krylov method. That solve is not a passive preconditioner: it computes\nthe search direction. Being Krylov, it is inexact, and being inexact, the\noperator effectively applied ","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"key":"CE2MkGnPeo"},{"type":"emphasis","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"children":[{"type":"text","value":"differs between outer iterations","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"key":"APWGeStIWO"}],"key":"mbMbEtsACs"},{"type":"text","value":". A non-flexible\nGMRES assumes a fixed preconditioner and its residual recurrence has no\nguarantee against an operator that drifts.","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"key":"ptdb0SmSy5"}],"key":"GpxR5bONnq"},{"type":"paragraph","position":{"start":{"line":178,"column":1},"end":{"line":178,"column":1}},"children":[{"type":"text","value":"On a notch problem at refinement 3, varying only this:","position":{"start":{"line":178,"column":1},"end":{"line":178,"column":1}},"key":"Kxy26yKrz8"}],"key":"kjSOSmva1R"},{"type":"table","position":{"start":{"line":180,"column":1},"end":{"line":185,"column":1}},"children":[{"type":"tableRow","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"children":[{"type":"tableCell","header":true,"position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"children":[{"type":"text","value":"outer","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"key":"J52aD7gIrK"}],"key":"pB3IwvLg2F"},{"type":"tableCell","header":true,"position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"children":[{"type":"text","value":"inner rtol","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"key":"uOQ8XpgL59"}],"key":"bYHS51PC1C"},{"type":"tableCell","header":true,"position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"children":[{"type":"text","value":"velocity its/step","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"key":"ekzXlyCGAz"}],"key":"pHGE9xTMwu"},{"type":"tableCell","header":true,"position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"children":[{"type":"text","value":"result","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"key":"YuVdzKYP27"}],"key":"Y00kqZ8cwJ"}],"key":"rUMHNIIszl"},{"type":"tableRow","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"children":[{"type":"inlineCode","value":"gmres","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"key":"BUxXznZKIS"}],"key":"FxfUhPUAaP"},{"type":"tableCell","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"children":[{"type":"text","value":"3.3e-08","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"key":"Arw5rXcEn6"}],"key":"EEqkWzpuk8"},{"type":"tableCell","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"children":[{"type":"text","value":"983","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"key":"zeKoCz5MH0"}],"key":"mfSsrOF2XL"},{"type":"tableCell","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"children":[{"type":"text","value":"DIVERGED_LINEAR_SOLVE","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"key":"if5yeFpnnw"}],"key":"YMuif3fKPr"}],"key":"zwPV4LBlDr"},{"type":"tableRow","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"children":[{"type":"inlineCode","value":"gmres","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"key":"r6wQdLUN6s"}],"key":"XnDupyHITA"},{"type":"tableCell","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"children":[{"type":"text","value":"1e-03","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"key":"T2vfxIW7uD"}],"key":"nSusvl6DoA"},{"type":"tableCell","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"children":[{"type":"text","value":"915","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"key":"IxbNy2lwb0"}],"key":"p8EahZ5OuZ"},{"type":"tableCell","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"children":[{"type":"text","value":"DIVERGED_LINEAR_SOLVE","position":{"start":{"line":183,"column":1},"end":{"line":183,"column":1}},"key":"p58hyJTlXD"}],"key":"dNFan1gXLF"}],"key":"Q27SEVA9vo"},{"type":"tableRow","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"children":[{"type":"strong","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"children":[{"type":"inlineCode","value":"fgmres","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"QkPzMsRWmW"}],"key":"yi4s2zXKgr"}],"key":"Z3lWVGddKr"},{"type":"tableCell","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"children":[{"type":"text","value":"3.3e-08","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"svxkpSAiKa"}],"key":"EvEjysV8jd"},{"type":"tableCell","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"children":[{"type":"strong","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"children":[{"type":"text","value":"58","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"ippgyLocGS"}],"key":"xblXqoYn3Z"}],"key":"cm4DcA9AIR"},{"type":"tableCell","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"children":[{"type":"text","value":"no linear failure","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"WzNAVxCBUo"}],"key":"xHMaL0xd5c"}],"key":"J1pFKT3nkq"},{"type":"tableRow","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"children":[{"type":"strong","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"children":[{"type":"inlineCode","value":"fgmres","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"key":"JTKwktxEAQ"}],"key":"NzKZFldBRP"}],"key":"a3IhyCAkyN"},{"type":"tableCell","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"children":[{"type":"text","value":"1e-03","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"key":"j759eQH76v"}],"key":"fAfQxc47Wu"},{"type":"tableCell","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"children":[{"type":"strong","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"children":[{"type":"text","value":"23","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"key":"KGsxaGSk5G"}],"key":"FUfh9R0rDF"}],"key":"RHqNxooNg7"},{"type":"tableCell","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"children":[{"type":"text","value":"no linear failure","position":{"start":{"line":185,"column":1},"end":{"line":185,"column":1}},"key":"H89PcI6dHZ"}],"key":"nQrlD4eOrl"}],"key":"E3hoytWvZN"}],"key":"mwvZIcWirr"},{"type":"paragraph","position":{"start":{"line":187,"column":1},"end":{"line":191,"column":1}},"children":[{"type":"text","value":"Raising the velocity iteration cap from 200 to 2000 changed nothing at all —\nthe rows were byte-identical. Loosening the inner tolerance by five orders of\nmagnitude while the outer stayed non-flexible was worth 7%. The flexible outer\nKrylov is the entire effect, and once it is in place the same loosening is\nworth a further factor of 2.6.","position":{"start":{"line":187,"column":1},"end":{"line":187,"column":1}},"key":"YHGiL4afqx"}],"key":"NSiAoKQSBs"},{"type":"paragraph","position":{"start":{"line":193,"column":1},"end":{"line":198,"column":1}},"children":[{"type":"text","value":"The inner solves being deliberately inexact is an old design, inherited from\nCitcom. Two halves of one decision: inexact inner solves require a flexible\nouter method, and ","position":{"start":{"line":193,"column":1},"end":{"line":193,"column":1}},"key":"xCu76uYcIQ"},{"type":"emphasis","position":{"start":{"line":193,"column":1},"end":{"line":193,"column":1}},"children":[{"type":"text","value":"how","position":{"start":{"line":193,"column":1},"end":{"line":193,"column":1}},"key":"lZcA7zS8pk"}],"key":"kqHKBqjq62"},{"type":"text","value":" inexact is bounded by requiring the inner solves to\nconverge well below the tolerance demanded of the outer one. The factors UW3\nuses — 0.033 for velocity, 0.1 for pressure — are that margin. Their existence\nis principled; their particular sizes are inherited convention.","position":{"start":{"line":193,"column":1},"end":{"line":193,"column":1}},"key":"KwFchubvZr"}],"key":"nJD3Gk2Rfp"},{"type":"heading","depth":2,"position":{"start":{"line":200,"column":1},"end":{"line":200,"column":1}},"children":[{"type":"text","value":"What it is worth","position":{"start":{"line":200,"column":1},"end":{"line":200,"column":1}},"key":"NELnwEykaf"}],"identifier":"what-it-is-worth","label":"What it is worth","html_id":"what-it-is-worth","implicit":true,"key":"dV68luuJaE"},{"type":"paragraph","position":{"start":{"line":202,"column":1},"end":{"line":203,"column":1}},"children":[{"type":"text","value":"The comparison that matters is against algebraic multigrid, which is what you\nget without a hierarchy and which needs nothing from the mesh.","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"key":"Fo1JSgpJco"}],"key":"PumgOlWx4u"},{"type":"paragraph","position":{"start":{"line":205,"column":1},"end":{"line":212,"column":1}},"children":[{"type":"text","value":"On a refined mesh with a genuine hierarchy, geometric multigrid is\nsubstantially better conditioned, because it is built from the refinement\nrelation rather than inferred from the operator’s connectivity — which is\nexactly what mesh anisotropy makes misleading. In the runs behind the\n","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"key":"PkUXSSrSDc"},{"type":"link","url":"/moving-the-mesh-without-remaking-it/","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"children":[{"type":"text","value":"mesh-mover note","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"key":"X7iyGaZY7t"}],"urlSource":"/moving-the-mesh-without-remaking-it/","key":"m1G0bZBG9O"},{"type":"text","value":", a four-level\n","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"key":"dbBkXp0TOe"},{"type":"inlineCode","value":"pc=mg","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"key":"m1OV77UzLo"},{"type":"text","value":" converged the velocity block in three to four iterations; where the\nhierarchy was lost and the solve fell back to algebraic multigrid, the same\nblock took 23.","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"key":"xtFjgTfpiK"}],"key":"QSoMtrEcAu"},{"type":"paragraph","position":{"start":{"line":214,"column":1},"end":{"line":218,"column":1}},"children":[{"type":"text","value":"The corollary is the reason those two notes are a pair. A hierarchy is a\ncapital asset: it is built once and it is what makes the solve cheap. Anything\nthat destroys it — remeshing in particular — is not only paying for the\nremesh, it is paying for every solve afterwards until a new hierarchy is built.\nThat is what moving the mesh instead of remaking it is protecting.","position":{"start":{"line":214,"column":1},"end":{"line":214,"column":1}},"key":"mZmtDvXnsN"}],"key":"GkW33F1PS5"},{"type":"heading","depth":2,"position":{"start":{"line":220,"column":1},"end":{"line":220,"column":1}},"children":[{"type":"text","value":"Using it","position":{"start":{"line":220,"column":1},"end":{"line":220,"column":1}},"key":"JIMHjpkExo"}],"identifier":"using-it","label":"Using it","html_id":"using-it","implicit":true,"key":"P7dxGJuHRp"},{"type":"code","lang":"python","value":"# A hierarchy: two refinements from a coarse base, coarse levels kept.\nmesh = uw.meshing.UnstructuredSimplexBox(cellSize=0.05, refinement=2)\n\nstokes = uw.systems.Stokes(mesh)\nstokes.preconditioner = \"auto\"        # the default: FMG if there is a hierarchy\nstokes.solve()\n\nprint(stokes.preconditioner_settings) # what was applied\nprint(stokes.pc_fallbacks)            # anything declined, and why","position":{"start":{"line":222,"column":1},"end":{"line":232,"column":1}},"key":"Yz7hEZZxg9"},{"type":"paragraph","position":{"start":{"line":234,"column":1},"end":{"line":235,"column":1}},"children":[{"type":"text","value":"When adapting, ask for levels by coarsening ratio rather than taking one per\nengine pass:","position":{"start":{"line":234,"column":1},"end":{"line":234,"column":1}},"key":"ar0js5VmFc"}],"key":"rH7t2O1oOd"},{"type":"code","lang":"python","value":"child = mesh.adapt(metric, max_levels=3, mg_coarsening_ratio=2.0)","position":{"start":{"line":237,"column":1},"end":{"line":239,"column":1}},"key":"ge1Oi2BdC4"},{"type":"div","class":"uwtn-discuss","children":[{"type":"div","class":"uwtn-discuss-head","children":[{"type":"text","value":"Comments","key":"d9SuDZNz0l"}],"key":"xwLa4XsOUE"},{"type":"div","class":"uwtn-discuss-body","children":[{"type":"text","value":"Discussion of these notes happens in GitHub Discussions, so it stays with the source and is searchable alongside it.","key":"qVWrFMkdCZ"}],"key":"wt36XCOyR4"},{"type":"div","class":"uwtn-discuss-links","children":[{"type":"link","url":"https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions?discussions_q=setting-up-full-multigrid","children":[{"type":"text","value":"Read the discussion","key":"woWYtZRgVZ"}],"urlSource":"https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions?discussions_q=setting-up-full-multigrid","error":true,"key":"pUQXaUSrQk"},{"type":"link","url":"https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions/new?category=general\u0026title=setting-up-full-multigrid","children":[{"type":"text","value":"Start one","key":"qjObfFKKQe"}],"urlSource":"https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions/new?category=general\u0026title=setting-up-full-multigrid","error":true,"key":"iRRNR4W0du"}],"key":"HxejvEvvsS"}],"key":"AsB45DCu7T"}],"key":"pvtmbc4MCn"}],"key":"BdetfbH8iv"},"references":{"cite":{"order":[],"data":{}}},"footer":{"navigation":{"prev":{"title":"Underworld Technical Notes","url":"/","group":"Underworld Technical Notes"}}},"domain":"http://localhost:3000"},"project":{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Technical Notes","description":"Methods, implementation notes, benchmarks and worked examples from the Underworld geodynamics code.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/setting-up-full-multigrid/setting-up-full-multigrid.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"setting-up-full-multigrid","title":"Setting Up Full Multigrid","description":"Geometric multigrid is the fastest preconditioner we have for Stokes on a refined mesh, and most of what decides whether it works is not in the solver options. What counts as a level, how the transfers are built when the levels were not made from each other, and why the outer Krylov has to be flexible.","date":"2026-08-14","thumbnail":"","thumbnailOptimized":"","banner":"","bannerOptimized":"","tags":[],"level":1}]}}},"actionData":null,"errors":null},"future":{"unstable_dev":false,"unstable_postcss":false,"unstable_tailwind":false,"v2_errorBoundary":true,"v2_headers":true,"v2_meta":true,"v2_normalizeFormMethod":true,"v2_routeConvention":true}};</script><script type="module" async="">import "/underworldcode.org-preview/0c9cad6b66/build/manifest-C732C875.js";
+import * as route0 from "/underworldcode.org-preview/0c9cad6b66/build/root-3VHQT63W.js";
+import * as route1 from "/underworldcode.org-preview/0c9cad6b66/build/routes/$-O2KOSX5W.js";
+window.__remixRouteModules = {"root":route0,"routes/$":route1};
+
+import("/underworldcode.org-preview/0c9cad6b66/build/entry.client-PCJPW7TK.js");</script><script id="uwtn-preview-banner">
+(function () {
+  var TEXT = "PREVIEW \\u2014 note/setting-up-full-multigrid at b11ddf5. Not published; not the citable version.";
+  var NOTICE = "Discussion will be available after publication.";
+  var ID = "uwtn-preview-bar";
+
+  function banner() {
+    if (document.getElementById(ID)) return;
+    var bar = document.createElement("div");
+    bar.id = ID;
+    bar.textContent = TEXT;
+    bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;" +
+      "background:#7a1f1f;color:#fff;font:600 13px/1.6 system-ui,sans-serif;" +
+      "padding:.45em 1em;text-align:center;letter-spacing:.01em";
+    document.body.appendChild(bar);
+    document.documentElement.style.scrollPaddingTop = "2.6em";
+  }
+
+  // The block has to be rewritten in the DOM rather than in the markup: it is
+  // in the page TWICE, once as HTML and once as JSON in the hydration payload,
+  // and React re-renders from the JSON. A string replacement in the built file
+  // is undone the moment the page becomes interactive.
+  function discussion() {
+    var body = document.querySelector(".uwtn-discuss-body");
+    if (body && body.textContent !== NOTICE) body.textContent = NOTICE;
+    var links = document.querySelector(".uwtn-discuss-links");
+    if (links) links.remove();
+  }
+
+  function attach() { banner(); discussion(); }
+
+  function start() { window.setTimeout(attach, 0); }
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start);
+
+  // Client-side routing replaces the page without reloading it.
+  var pending = null;
+  new MutationObserver(function () {
+    if (pending) return;
+    pending = window.setTimeout(function () { pending = null; attach(); }, 150);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script></body></html>
