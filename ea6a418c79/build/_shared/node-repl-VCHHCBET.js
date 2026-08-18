@@ -1,0 +1,1 @@
+import{c as e}from"/underworldcode.org-preview/ea6a418c79/build/_shared/chunk-OZE3FFNP.js";var s=e((r,a)=>{function n(t){return{name:"Node REPL",contains:[{className:"meta",starts:{end:/ |$/,starts:{end:"$",subLanguage:"javascript"}},variants:[{begin:/^>(?=[ ]|$)/},{begin:/^\.\.\.(?=[ ]|$)/}]}]}}a.exports=n});export default s();
