@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Running Underworld in a Browser: Any Repository, Any Version — Underworld Geodynamics</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="../">
+<style>
+:root {
+  --uwtn-ink: #16202b; --uwtn-muted: #5d6b7a; --uwtn-rule: #dfe4ea;
+  --uwtn-accent: #1a4f80; --uwtn-paper: #ffffff;
+  --uwtn-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --uwtn-ink: #e6e9ec; --uwtn-muted: #9aa7b4; --uwtn-rule: #2b3541;
+    --uwtn-accent: #7cb3e0; --uwtn-paper: #131a21;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--uwtn-paper); color: var(--uwtn-ink);
+       font-family: var(--uwtn-sans); font-size: 16px; line-height: 1.5;
+       display: flex; flex-direction: column; min-height: 100vh; }
+header { border-bottom: 1px solid var(--uwtn-rule); padding: 1.1rem 1.4rem; }
+.wrap { max-width: 68rem; margin: 0 auto; width: 100%; }
+.kicker { font-size: .78rem; letter-spacing: .09em; text-transform: uppercase;
+          color: var(--uwtn-muted); }
+h1 { font-size: 1.25rem; margin: .25rem 0 .35rem; font-weight: 600; }
+.meta { color: var(--uwtn-muted); font-size: .9rem; }
+.meta a { color: inherit; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
+.actions a { display: inline-block; text-decoration: none; font-size: .88rem;
+             padding: .4rem .8rem; border-radius: 5px;
+             border: 1px solid var(--uwtn-rule); color: var(--uwtn-ink); }
+.actions a:hover { border-color: var(--uwtn-accent); color: var(--uwtn-accent); }
+.actions a.primary { background: var(--uwtn-accent); border-color: var(--uwtn-accent);
+                     color: #fff; }
+.reader { flex: 1 1 auto; min-height: 32rem; }
+.reader object, .reader iframe { display: block; width: 100%; height: 100%;
+                                 min-height: 32rem; border: 0; }
+.fallback { padding: 2rem 1.4rem; color: var(--uwtn-muted); }
+</style>
+<link rel="alternate" type="application/atom+xml" title="Underworld Geodynamics" href="https://www.underworldcode.org/feed.xml"><link rel="alternate" type="application/rss+xml" title="Underworld Geodynamics" href="https://www.underworldcode.org/rss.xml"></head>
+<body>
+<header><div class="wrap">
+  <div class="kicker">UWTN 2026-010</div>
+  <h1>Running Underworld in a Browser: Any Repository, Any Version</h1>
+  <div class="meta">Louis Moresi · 2026-08-11 · <a href="https://doi.org/10.6084/m9.figshare.33216996">doi:10.6084/m9.figshare.33216996</a></div>
+  <div class="actions">
+    <a class="primary" href="../running-underworld-in-a-browser.pdf" download>Download PDF</a>
+    <a href="../running-underworld-in-a-browser.md" download>Markdown source</a>
+    <a href="../">Read on the site</a>
+  </div>
+</div></header>
+<div class="reader">
+  <object data="../running-underworld-in-a-browser.pdf#view=FitH" type="application/pdf">
+    <div class="fallback">
+      <p>This browser will not display a PDF here — most phones will not.</p>
+      <p><a href="../running-underworld-in-a-browser.pdf">Open the PDF</a> or
+         <a href="../">read the article on the site</a>.</p>
+    </div>
+  </object>
+</div>
+<script id="uwtn-reader-link">
+(function () {
+  var CLASS = "uwtn-pdf-link";
+
+  function readerHref() {
+    // Built from the CURRENT path, not from "/" + slug: the preview site serves
+    // the whole site from a hashed subdirectory, and an absolute path would walk
+    // out of it to the domain root.
+    var path = window.location.pathname.replace(/\/+$/, "");
+    if (!path || /\/read$/.test(path)) return null;
+    return path + "/read/";
+  }
+
+  // 1. A visible link in the frontmatter badge row, beside the licence badge.
+  function addBadge() {
+    var href = readerHref();
+    if (!href) return;
+    var row = document.querySelector(".myst-fm-block-badges");
+    if (!row) return;                                  // not an article page
+    var existing = row.querySelector("." + CLASS);
+    if (existing) { existing.setAttribute("href", href); return; }
+    var link = document.createElement("a");
+    link.className = CLASS;
+    link.setAttribute("href", href);
+    link.setAttribute("aria-label", "Read the archival PDF");
+    link.textContent = "PDF";
+    row.insertBefore(link, row.firstChild);
+  }
+
+  // 2. The theme's Downloads menu. Its entries are rendered from the hydration
+  //    payload only when the menu opens, so there is nothing to rewrite until
+  //    then -- and a rewrite that waits for them races the reader's next click.
+  //    Catching the click is exact.
+  document.addEventListener("click", function (event) {
+    var anchor = event.target && event.target.closest
+      ? event.target.closest('a[href*="/build/"][href$=".pdf"]') : null;
+    if (!anchor) return;
+    var href = readerHref();
+    if (!href) return;
+    event.preventDefault();
+    window.location.href = href;
+  }, true);                                            // capture: before the theme
+
+  // After hydration, like the comments bootstrap: anything done earlier is undone.
+  function start() { window.setTimeout(addBadge, 0); }
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start);
+
+  // The theme routes on the client, so a new article never reloads the page.
+  var pending = null;
+  new MutationObserver(function () {
+    if (pending) return;
+    pending = window.setTimeout(function () { pending = null; addBadge(); }, 120);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script></body>
+</html>
