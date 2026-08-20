@@ -64,6 +64,8 @@ h1 { font-size: 1.25rem; margin: .25rem 0 .35rem; font-weight: 600; }
 </div>
 <script id="uwtn-reader-link">
 (function () {
+  var CLASS = "uwtn-pdf-link";
+
   function readerHref() {
     // Built from the CURRENT path, not from "/" + slug: the preview site serves
     // the whole site from a hashed subdirectory, and an absolute path would walk
@@ -73,28 +75,46 @@ h1 { font-size: 1.25rem; margin: .25rem 0 .35rem; font-weight: 600; }
     return path + "/read/";
   }
 
-  function retarget() {
+  // 1. A visible link in the frontmatter badge row, beside the licence badge.
+  function addBadge() {
     var href = readerHref();
     if (!href) return;
-    var links = document.querySelectorAll('a[href*="/build/"][href$=".pdf"]');
-    for (var i = 0; i < links.length; i++) {
-      links[i].setAttribute("href", href);
-      links[i].removeAttribute("download");     // it is a page now, not a file
-    }
+    var row = document.querySelector(".myst-fm-block-badges");
+    if (!row) return;                                  // not an article page
+    var existing = row.querySelector("." + CLASS);
+    if (existing) { existing.setAttribute("href", href); return; }
+    var link = document.createElement("a");
+    link.className = CLASS;
+    link.setAttribute("href", href);
+    link.setAttribute("aria-label", "Read the archival PDF");
+    link.textContent = "PDF";
+    row.insertBefore(link, row.firstChild);
   }
 
+  // 2. The theme's Downloads menu. Its entries are rendered from the hydration
+  //    payload only when the menu opens, so there is nothing to rewrite until
+  //    then -- and a rewrite that waits for them races the reader's next click.
+  //    Catching the click is exact.
+  document.addEventListener("click", function (event) {
+    var anchor = event.target && event.target.closest
+      ? event.target.closest('a[href*="/build/"][href$=".pdf"]') : null;
+    if (!anchor) return;
+    var href = readerHref();
+    if (!href) return;
+    event.preventDefault();
+    window.location.href = href;
+  }, true);                                            // capture: before the theme
+
   // After hydration, like the comments bootstrap: anything done earlier is undone.
-  function start() { window.setTimeout(retarget, 0); }
+  function start() { window.setTimeout(addBadge, 0); }
   if (document.readyState === "complete") start();
   else window.addEventListener("load", start);
 
-  // The menu renders when it is opened, and the theme routes on the client, so
-  // the links appear and change without a reload. Debounced: retarget mutates
-  // the DOM itself.
+  // The theme routes on the client, so a new article never reloads the page.
   var pending = null;
   new MutationObserver(function () {
     if (pending) return;
-    pending = window.setTimeout(function () { pending = null; retarget(); }, 120);
+    pending = window.setTimeout(function () { pending = null; addBadge(); }, 120);
   }).observe(document.body, { childList: true, subtree: true });
 })();
 </script></body>
