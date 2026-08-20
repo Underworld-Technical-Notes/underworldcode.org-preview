@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Developing Underworld using Python Virtual Environments — Underworld Geodynamics</title>
 <meta name="robots" content="noindex">
-<link rel="canonical" href="/using-python-virtual-environment-for-underworld-development/">
+<link rel="canonical" href="../">
 <style>
 :root {
   --uwtn-ink: #16202b; --uwtn-muted: #5d6b7a; --uwtn-rule: #dfe4ea;
@@ -48,33 +48,37 @@ h1 { font-size: 1.25rem; margin: .25rem 0 .35rem; font-weight: 600; }
   <h1>Developing Underworld using Python Virtual Environments</h1>
   <div class="meta">Romain Beucher · 2022-01-20 · <a href="https://doi.org/10.6084/m9.figshare.33193515">doi:10.6084/m9.figshare.33193515</a></div>
   <div class="actions">
-    <a class="primary" href="/using-python-virtual-environment-for-underworld-development/using-python-virtual-environment-for-underworld-development.pdf" download>Download PDF</a>
-    <a href="/using-python-virtual-environment-for-underworld-development/using-python-virtual-environment-for-underworld-development.md" download>Markdown source</a>
-    <a href="/using-python-virtual-environment-for-underworld-development/">Read on the site</a>
+    <a class="primary" href="../using-python-virtual-environment-for-underworld-development.pdf" download>Download PDF</a>
+    <a href="../using-python-virtual-environment-for-underworld-development.md" download>Markdown source</a>
+    <a href="../">Read on the site</a>
   </div>
 </div></header>
 <div class="reader">
-  <object data="/using-python-virtual-environment-for-underworld-development/using-python-virtual-environment-for-underworld-development.pdf#view=FitH" type="application/pdf">
+  <object data="../using-python-virtual-environment-for-underworld-development.pdf#view=FitH" type="application/pdf">
     <div class="fallback">
       <p>This browser will not display a PDF here — most phones will not.</p>
-      <p><a href="/using-python-virtual-environment-for-underworld-development/using-python-virtual-environment-for-underworld-development.pdf">Open the PDF</a> or
-         <a href="/using-python-virtual-environment-for-underworld-development/">read the article on the site</a>.</p>
+      <p><a href="../using-python-virtual-environment-for-underworld-development.pdf">Open the PDF</a> or
+         <a href="../">read the article on the site</a>.</p>
     </div>
   </object>
 </div>
 <script id="uwtn-reader-link">
 (function () {
-  function slugOf() {
-    var parts = window.location.pathname.split("/").filter(Boolean);
-    return parts.length ? parts[parts.length - 1] : "";
+  function readerHref() {
+    // Built from the CURRENT path, not from "/" + slug: the preview site serves
+    // the whole site from a hashed subdirectory, and an absolute path would walk
+    // out of it to the domain root.
+    var path = window.location.pathname.replace(/\/+$/, "");
+    if (!path || /\/read$/.test(path)) return null;
+    return path + "/read/";
   }
 
   function retarget() {
-    var slug = slugOf();
-    if (!slug || slug === "read") return;
-    var links = document.querySelectorAll('a[href^="/build/"][href$=".pdf"]');
+    var href = readerHref();
+    if (!href) return;
+    var links = document.querySelectorAll('a[href*="/build/"][href$=".pdf"]');
     for (var i = 0; i < links.length; i++) {
-      links[i].setAttribute("href", "/" + slug + "/read/");
+      links[i].setAttribute("href", href);
       links[i].removeAttribute("download");     // it is a page now, not a file
     }
   }
