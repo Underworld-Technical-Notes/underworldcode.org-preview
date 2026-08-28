@@ -123,5 +123,36 @@ h1 { font-size: 1.25rem; margin: .25rem 0 .35rem; font-weight: 600; }
     pending = window.setTimeout(function () { pending = null; addBadge(); }, 120);
   }).observe(document.body, { childList: true, subtree: true });
 })();
+</script><script id="uwtn-analytics-bootstrap">
+(function () {
+  var HOSTNAME = "www.underworldcode.org";
+  var TOKEN = "b01cd97667bf423dae55b77bae29fbeb";
+
+  // Preview deployments and the dev server share this build; only the real
+  // site should report, or the figures include our own editing.
+  if (HOSTNAME && window.location.hostname !== HOSTNAME) return;
+
+  function attach() {
+    if (document.querySelector('script[data-cf-beacon]')) return;
+    var script = document.createElement("script");
+    script.src = "https://static.cloudflareinsights.com/beacon.min.js";
+    // Cloudflare's own snippet is type=module. The script they serve today is
+    // a bundled IIFE that would run either way, but matching the snippet they
+    // test means a future real module does not silently stop reporting.
+    script.type = "module";
+    // set BEFORE append: the beacon reads its configuration from its own tag,
+    // via document.currentScript or a script[data-cf-beacon] lookup
+    script.setAttribute("data-cf-beacon", JSON.stringify({token: TOKEN}));
+    document.body.appendChild(script);
+  }
+
+  // Hydration has to finish first: anything present beforehand is reconciled
+  // away, because the theme hydrates the whole document rather than a root.
+  // The beacon follows client-side route changes on its own from there.
+  if (document.readyState === "complete") window.setTimeout(attach, 0);
+  else window.addEventListener("load", function () {
+    window.setTimeout(attach, 0);
+  });
+})();
 </script></body>
 </html>
