@@ -1,0 +1,1 @@
+import{a,b,c,d,e}from"/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-265RPIE7.js";import"/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-OZE3FFNP.js";e();export{a as javascript,b as json,c as jsonld,d as typescript};

@@ -1,0 +1,869 @@
+<!DOCTYPE html><html lang="en" class="" style="scroll-padding:60px"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Running Underworld in a Browser: Any Repository, Any Version - Underworld Geodynamics</title><meta property="og:title" content="Running Underworld in a Browser: Any Repository, Any Version - Underworld Geodynamics"/><meta name="generator" content="mystmd"/><meta name="description" content="One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it."/><meta property="og:description" content="One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it."/><meta name="keywords" content="Underworld Code, Python/Jupyter"/><meta name="image" content="/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg"/><meta property="og:image" content="/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg"/><link rel="stylesheet" href="/underworldcode.org-preview/d8ebfa6b05/build/_assets/app-TIOB6ZNY.css"/><link rel="stylesheet" href="/underworldcode.org-preview/d8ebfa6b05/build/_assets/thebe-core-VKVHG5VY.css"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jupyter-matplotlib@0.11.3/css/mpl_widget.css"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.css" integrity="sha384-MlJdn/WNKDGXveldHDdyRP1R4CTHr3FeuDNfhsLPYrq2t0UBkUdK2jyTnXPEK1NQ" crossorigin="anonymous"/><link rel="icon" href="/underworldcode.org-preview/d8ebfa6b05/favicon.ico"/><link rel="stylesheet" href="/underworldcode.org-preview/d8ebfa6b05/myst-theme.css"/><script>
+  const savedTheme = localStorage.getItem("myst:theme");
+  const theme = window.matchMedia("(prefers-color-scheme: light)").matches ? 'light' : 'dark';
+  const classes = document.documentElement.classList;
+  const hasAnyTheme = classes.contains('light') || classes.contains('dark');
+  if (!hasAnyTheme) classes.add(savedTheme ?? theme);
+</script><script>(function(){var p=window.location.pathname;if(p.endsWith('/index.html'))window.location.replace((p.slice(0,-10)||'/')+window.location.search+window.location.hash);})();</script><style id="uwtn-inlined-style">
+/* Underworld Technical Notes — site styling.
+ *
+ * The aim is that the site and the archival PDF look like the same
+ * publication. The PDF sets its body in a serif with small-caps labels in a
+ * muted blue down the margin; the site borrows that vocabulary rather than
+ * inventing a second identity. Anything here that is merely decorative should
+ * be removed instead of elaborated.
+ */
+
+:root {
+  --uwtn-ink: #16202b;
+  --uwtn-muted: #5d6b7a;
+  --uwtn-rule: #dfe4ea;
+  --uwtn-accent: #1a4f80;        /* the PDF's theme colour, blue.darken(30%) */
+  --uwtn-paper: #ffffff;
+  --uwtn-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+                "Times New Roman", serif;
+  --uwtn-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --uwtn-ink: #e6e9ec;
+    --uwtn-muted: #9aa7b4;
+    --uwtn-rule: #2b3541;
+    --uwtn-accent: #7cb3e0;
+    --uwtn-paper: #131a21;
+  }
+}
+
+/* ---- masthead ---------------------------------------------------------- */
+
+.uwtn-masthead {
+  border-bottom: 1px solid var(--uwtn-rule);
+  padding-bottom: 1.6rem;
+  margin-bottom: 2.4rem;
+}
+
+.uwtn-kicker {
+  font-family: var(--uwtn-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  margin: 0 0 0.15rem;
+}
+
+.uwtn-wordmark {
+  font-family: var(--uwtn-serif);
+  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--uwtn-ink);
+  margin: 0 0 0.7rem;
+}
+
+.uwtn-standfirst {
+  font-family: var(--uwtn-serif);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--uwtn-muted);
+  max-width: 34em;
+  margin: 0;
+}
+
+/* ---- the feed ---------------------------------------------------------- */
+
+/* MyST strips <article>, <p class> and <time>, so entries are divs. The title
+   stays a real heading but loses its class -- hence the descendant selector. */
+.uwtn-entry {
+  border-top: 1px solid var(--uwtn-rule);
+  padding: 1.5rem 0 1.4rem;
+}
+
+.uwtn-entry:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Article id and date, echoing the identity strip down the PDF's margin. */
+.uwtn-entry-meta,
+.uwtn-kicker {
+  font-family: var(--uwtn-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin: 0 0 0.35rem;
+  display: flex;
+  gap: 0.9rem;
+}
+
+.uwtn-id { color: var(--uwtn-accent); font-weight: 600; }
+
+.uwtn-entry :is(h1, h2, h3, h4) {
+  font-family: var(--uwtn-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.3rem;
+}
+
+/* The theme's hover anchor (¶) belongs on documentation, not on a feed. */
+.uwtn-entry :is(h1, h2, h3, h4) > a[href^="#"] { display: none; }
+
+.uwtn-entry :is(h1, h2, h3, h4) a {
+  color: var(--uwtn-ink);
+  text-decoration: none;
+  background-image: linear-gradient(var(--uwtn-accent), var(--uwtn-accent));
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.18s ease;
+}
+
+.uwtn-entry :is(h1, h2, h3, h4) a:hover { background-size: 100% 1px; }
+
+.uwtn-entry-byline {
+  font-family: var(--uwtn-sans);
+  font-size: 0.82rem;
+  color: var(--uwtn-muted);
+  margin: 0 0 0.55rem;
+}
+
+.uwtn-entry-summary {
+  font-family: var(--uwtn-serif);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--uwtn-ink);
+  max-width: 38em;
+  margin: 0 0 0.7rem;
+}
+
+/* ---- affordances ------------------------------------------------------- */
+
+.uwtn-entry-links {
+  font-family: var(--uwtn-sans);
+  font-size: 0.8rem;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  align-items: baseline;
+}
+
+.uwtn-entry-links a {
+  color: var(--uwtn-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.uwtn-entry-links a:hover { border-bottom-color: currentColor; }
+
+.uwtn-read::after { content: " →"; }
+
+/* The DOI is the published identifier, so it is shown in full rather than
+   hidden behind a word. */
+.uwtn-doi-label {
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin-right: 0.35em;
+}
+
+.uwtn-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0;
+  margin: 0.7rem 0 0;
+}
+
+.uwtn-tag {
+  font-family: var(--uwtn-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--uwtn-muted);
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 2px;
+  padding: 0.1rem 0.45rem;
+}
+
+.uwtn-colophon {
+  border-top: 1px solid var(--uwtn-rule);
+  margin-top: 2.4rem;
+  padding-top: 1.2rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--uwtn-muted);
+  max-width: 38em;
+}
+
+/* ---- article pages ----------------------------------------------------- */
+
+/* Give the body the same serif as the PDF, so an article reads as the same
+   document in a different medium. Code and maths keep the theme's fonts. */
+.uwtn-article-body,
+article.content p,
+article.content li,
+article.content blockquote {
+  font-family: var(--uwtn-serif);
+  font-size: 1.02rem;
+  line-height: 1.62;
+}
+
+article.content h1,
+article.content h2,
+article.content h3 {
+  font-family: var(--uwtn-serif);
+  letter-spacing: -0.005em;
+}
+
+/* Captions read as apparatus, matching the PDF: sans, smaller, lighter. */
+article.content figcaption,
+article.content figcaption p {
+  font-family: var(--uwtn-sans);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--uwtn-muted);
+}
+
+@media (max-width: 640px) {
+  .uwtn-entry-meta { flex-direction: column; gap: 0.1rem; }
+  .uwtn-entry-title { font-size: 1.3rem; }
+}
+
+/* ---- year rules -------------------------------------------------------- */
+
+/* The feed is grouped the way the article ids are, by year. If the series ever
+   adopts volumes this label is where that happens. */
+.uwtn-year {
+  font-family: var(--uwtn-sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin: 2.4rem 0 0.9rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid var(--uwtn-ink);
+}
+
+.uwtn-year:first-child { margin-top: 0; }
+.uwtn-year + .uwtn-entry { border-top: none; padding-top: 0.2rem; }
+
+/* ---- the lead item ----------------------------------------------------- */
+
+.uwtn-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1.6rem;
+  align-items: start;
+}
+
+.uwtn-lead .uwtn-thumb { order: 2; }
+.uwtn-lead .uwtn-entry-text { order: 1; }
+
+.uwtn-lead :is(h1, h2, h3, h4) { font-size: 2rem; line-height: 1.12; }
+.uwtn-lead .uwtn-entry-summary { font-size: 1.08rem; }
+
+.uwtn-thumb {
+  display: block;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--uwtn-rule);
+}
+
+.uwtn-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  margin: 0;
+  /* Decorative, so it should not compete with the words. */
+  filter: saturate(0.82);
+  transition: filter 0.25s ease, transform 0.4s ease;
+}
+
+.uwtn-thumb:hover img { filter: saturate(1); transform: scale(1.02); }
+
+/* ---- article banner ---------------------------------------------------- */
+
+/* Kept from the Ghost posts, and only on the web: the banner is a raw HTML
+   block, which the HTML build renders and the Typst build drops, so the
+   archival PDF stays free of decoration. */
+.uwtn-banner {
+  margin: 0 0 2rem;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--uwtn-rule);
+}
+
+.uwtn-banner img {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  /* The theme's prose rule gives every image that is not inside a <figure>
+     `margin: 2em 0`. Inside the banner's frame that reads as a white band
+     above and below the picture -- invisible on a banner with a white
+     background, obvious on a photograph. */
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .uwtn-lead { grid-template-columns: 1fr; gap: 1rem; }
+  .uwtn-lead .uwtn-thumb { order: 1; }
+  .uwtn-lead .uwtn-entry-text { order: 2; }
+  .uwtn-lead :is(h1, h2, h3, h4) { font-size: 1.5rem; }
+  .uwtn-banner img { max-height: 180px; }
+}
+
+/* ---- image credit ------------------------------------------------------ */
+
+/* Unsplash's licence asks for attribution wherever the photograph appears.
+   It sits on the image rather than beside it, so it credits without competing
+   with the article, and is always reachable — revealed on hover, and on focus
+   for anyone navigating by keyboard. */
+.uwtn-banner { position: relative; }
+
+.uwtn-credit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  max-width: 100%;
+  padding: 0.3rem 0.6rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: #fff;
+  background: rgba(12, 18, 24, 0.72);
+  backdrop-filter: blur(3px);
+  border-top-left-radius: 3px;
+  opacity: 0;
+  transform: translateY(0.3rem);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.uwtn-banner:hover .uwtn-credit,
+.uwtn-banner:focus-within .uwtn-credit { opacity: 1; transform: none; }
+
+.uwtn-credit a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Touch devices have no hover, so the credit is simply always shown. */
+@media (hover: none) {
+  .uwtn-credit { opacity: 1; transform: none; position: static; background: none;
+                 color: var(--uwtn-muted); padding: 0.4rem 0 0; }
+  .uwtn-credit a { color: var(--uwtn-accent); }
+}
+
+/* ---- topics ------------------------------------------------------------ */
+
+a.uwtn-tag { text-decoration: none; transition: border-color 0.15s ease, color 0.15s ease; }
+a.uwtn-tag:hover { color: var(--uwtn-accent); border-color: var(--uwtn-accent); }
+
+.uwtn-topic-head { border-bottom: 1px solid var(--uwtn-rule);
+                   padding-bottom: 1.2rem; margin-bottom: 2rem; }
+.uwtn-topic-head .uwtn-wordmark { font-size: clamp(1.6rem, 4vw, 2.2rem); }
+
+.uwtn-topic-list { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.uwtn-topic-link {
+  font-family: var(--uwtn-sans);
+  font-size: 0.9rem;
+  color: var(--uwtn-ink);
+  text-decoration: none;
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 3px;
+  padding: 0.45rem 0.8rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.uwtn-topic-link:hover { border-color: var(--uwtn-accent); color: var(--uwtn-accent); }
+
+.uwtn-topic-count {
+  font-size: 0.7rem;
+  color: var(--uwtn-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The searchable query token on a topic page. Visible on purpose: it tells the
+   reader the query exists, which hidden text cannot, and it is what the search
+   index is built from. */
+.uwtn-query {
+  font-family: var(--uwtn-sans);
+  font-size: 0.75rem;
+  color: var(--uwtn-muted);
+  margin-top: 0.6rem;
+}
+
+.uwtn-query code {
+  font-size: 0.75rem;
+  background: var(--uwtn-rule);
+  border-radius: 2px;
+  padding: 0.1rem 0.35rem;
+  color: var(--uwtn-ink);
+}
+
+/* Facets the series has not covered yet. Shown rather than hidden: an empty
+   subject is a statement about the corpus, not an oversight. */
+.uwtn-axis { margin-bottom: 2rem; }
+
+.uwtn-unused {
+  font-family: var(--uwtn-sans);
+  font-size: 0.72rem;
+  color: var(--uwtn-muted);
+  margin-top: 0.7rem;
+}
+
+/* ---- baked bibliography ------------------------------------------------ */
+
+/* Rendered from Zotero at build time rather than fetched by client script, so
+   it is present without JavaScript, when Zotero is down, and in the archive. */
+.uwtn-bibliography { margin-top: 1.4rem; }
+
+.uwtn-ref {
+  font-family: var(--uwtn-serif);
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--uwtn-ink);
+  padding: 0.55rem 0 0.55rem 1.4rem;
+  text-indent: -1.4rem;          /* hanging indent, as a reference list wants */
+  border-bottom: 1px solid var(--uwtn-rule);
+  max-width: 42em;
+}
+
+.uwtn-ref:last-child { border-bottom: none; }
+.uwtn-ref a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-ref a:hover { text-decoration: underline; }
+
+/* ---- discussion -------------------------------------------------------- */
+
+.uwtn-discuss {
+  margin-top: 3rem;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 3px;
+  font-family: var(--uwtn-sans);
+}
+
+.uwtn-discuss-head {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  margin-bottom: 0.45rem;
+}
+
+.uwtn-discuss-body {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--uwtn-muted);
+  max-width: 42em;
+  margin-bottom: 0.9rem;
+}
+
+.uwtn-discuss-links { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.85rem; }
+.uwtn-discuss-links a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-discuss-links a:hover { text-decoration: underline; }
+.uwtn-discuss-links a::after { content: " →"; }
+
+/* A DOI on a listing is an identifier, shown rather than linked -- see
+   scripts/build_index.py for why. */
+.uwtn-doi { color: var(--uwtn-muted); font-variant-numeric: tabular-nums; }
+
+/* ---- comments ---------------------------------------------------------- */
+
+/* Giscus's script inserts its own frame here, sized by its own postMessage
+   resizing -- there is no MyST iframe wrapper to fight. The block sits above
+   the discussion links, which remain as the fallback. */
+.uwtn-comments {
+  margin-top: 2.5rem;
+}
+
+.uwtn-comments iframe { border: none; width: 100%; }
+
+
+/* ---- front page -------------------------------------------------------- */
+
+/* The front page is Underworld's own, not the series'. It leads with the
+   software and what it is for; the Technical Notes are one thing among
+   several, reached from the header. The masthead above is reserved for
+   /notes/, so that the two pages are visibly different publications. */
+
+.uwtn-hero {
+  border-bottom: 1px solid var(--uwtn-rule);
+  padding-bottom: 1.8rem;
+  margin-bottom: 2rem;
+}
+
+.uwtn-hero-title {
+  font-family: var(--uwtn-serif);
+  font-weight: 600;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--uwtn-ink);
+  margin: 0 0 0.8rem;
+}
+
+.uwtn-hero .uwtn-standfirst { font-size: 1.15rem; max-width: 36em; }
+
+.uwtn-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.4rem;
+  align-items: center;
+  margin-top: 1.4rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.9rem;
+}
+
+.uwtn-hero-actions a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-hero-actions a:hover { text-decoration: underline; }
+
+.uwtn-cta {
+  background: var(--uwtn-accent);
+  color: var(--uwtn-paper) !important;
+  padding: 0.5rem 1.1rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.uwtn-cta:hover { filter: brightness(1.12); text-decoration: none !important; }
+
+/* Three recent notes, as a pointer into the series rather than a feed of it.
+   Deliberately terser than .uwtn-entry: this is a signpost, not the contents. */
+.uwtn-briefs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.2rem;
+  margin: 1.6rem 0 2.4rem;
+}
+
+.uwtn-brief {
+  display: block;
+  border-top: 2px solid var(--uwtn-accent);
+  padding-top: 0.7rem;
+  text-decoration: none;
+  color: inherit;
+}
+.uwtn-brief:hover .uwtn-brief-title { text-decoration: underline; }
+
+.uwtn-brief-id {
+  display: block;
+  font-family: var(--uwtn-sans);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.uwtn-brief-title {
+  display: block;
+  font-family: var(--uwtn-serif);
+  font-size: 1.08rem;
+  line-height: 1.25;
+  color: var(--uwtn-ink);
+  margin-bottom: 0.35rem;
+}
+
+.uwtn-brief-summary {
+  display: block;
+  font-family: var(--uwtn-serif);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--uwtn-muted);
+}
+
+/* Section headings on the front page.
+ *
+ * A div, not a markdown heading. The theme nests headings several levels
+ * inside <main>, so a selector aimed at them either misses -- as `main > h2`
+ * did -- or has to reach through the template's own classes and breaks the
+ * next time they change. The outline is hidden on this page, so nothing is
+ * lost by not making these real headings. */
+.uwtn-section {
+  font-family: var(--uwtn-serif);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--uwtn-ink);
+  border-top: 1px solid var(--uwtn-rule);
+  padding-top: 1.6rem;
+  margin: 2.6rem 0 0.4rem;
+}
+
+.uwtn-section-note {
+  font-family: var(--uwtn-serif);
+  color: var(--uwtn-muted);
+  margin: 0 0 1.2rem;
+}
+
+/* The front page's animated band. Shaped like an article banner -- full
+   width, capped height, cropped rather than squashed -- so the two read as the
+   same kind of object. The class may land on the image itself or on a wrapper
+   depending on how the theme renders a MyST :class:, so both are covered. */
+.uwtn-landing-banner,
+.uwtn-landing-banner img {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  object-position: center top;          /* if the box is shorter than the
+                                           scaled band, lose the inner hole at
+                                           the bottom -- never the outer
+                                           surface, which is the subject */
+  margin: 0 0 2rem;
+  border-radius: 3px;
+  border: 1px solid var(--uwtn-rule);
+}
+.uwtn-landing-banner img {
+  margin: 0;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .uwtn-landing-banner,
+  .uwtn-landing-banner img { max-height: 180px; }
+}
+
+/* The archival PDF, as a visible link in the article's frontmatter badge row.
+   The theme's own route to it is an entry inside the Downloads menu, which a
+   reader has to know is there; this sits beside the licence badge and goes to
+   /<slug>/read/, where the PDF is embedded with the file and the markdown
+   source as buttons. Sized and faded to sit with the badges rather than
+   compete with them. */
+.uwtn-pdf-link {
+  font-family: var(--uwtn-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  color: var(--uwtn-muted);
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 3px;
+  padding: 0.05rem 0.4rem;
+  margin-right: 0.55rem;
+  opacity: 0.75;
+}
+.uwtn-pdf-link:hover {
+  opacity: 1;
+  color: var(--uwtn-accent);
+  border-color: var(--uwtn-accent);
+}
+
+</style><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"></head><body class="m-0 bg-white dark:bg-stone-900"><div class="myst-skip-to-article fixed top-1 left-1 h-[0px] w-[0px] focus-within:z-40 focus-within:h-auto focus-within:w-auto bg-white overflow-hidden focus-within:p-2 focus-within:ring-1" aria-label="skip to content options"><a href="#skip-to-frontmatter" class="myst-skip-to-link block px-2 py-1 text-black underline">Skip to article frontmatter</a><a href="#skip-to-article" class="myst-skip-to-link block px-2 py-1 text-black underline">Skip to article content</a></div><dialog id="myst-no-css" style="position:fixed;left:0px;top:0px;width:100%;height:100vh;font-size:4rem;padding:1rem;color:black;background:white"><strong>Site not loading correctly?</strong><p>This may be due to an incorrect <code>BASE_URL</code> configuration. See<!-- --> <a href="https://mystmd.org/guide/deployment#deploy-base-url">the MyST Documentation</a> <!-- -->for reference.</p><script>
+    (() => {
+            // Test for has-styling variable set by the MyST stylesheet
+            const node = document.currentScript.parentNode;
+            const hasCSS = window.getComputedStyle(node).getPropertyValue("--has-styling");
+            if (hasCSS === ""){
+                    node.showModal();
+            }
+
+    })()
+</script></dialog><div class="myst-top-nav bg-white/80 backdrop-blur dark:bg-stone-900/80 shadow dark:shadow-stone-700 p-3 md:px-8 sticky w-full top-0 z-30 min-h-[60px]"><nav class="myst-top-nav-bar flex items-center justify-between flex-nowrap max-w-[1440px] mx-auto"><div class="flex flex-row xl:min-w-[19.5rem] mr-2 sm:mr-7 justify-start items-center shrink-0"><div class="block xl:hidden"><button class="myst-top-nav-menu-button flex items-center justify-center border-stone-400 text-stone-800 hover:text-stone-900 dark:text-stone-200 hover:dark:text-stone-100 w-10 h-10"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.5rem" height="1.5rem"><path fill-rule="evenodd" d="M3 6.75A.75.75 0 0 1 3.75 6h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 6.75ZM3 12a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm0 5.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd"></path></svg><span class="sr-only">Open Menu</span></button></div><a class="myst-home-link flex items-center ml-3 dark:text-white w-fit md:ml-5 xl:ml-7" href="/underworldcode.org-preview/d8ebfa6b05/"><span class="text-md sm:text-xl tracking-tight sm:mr-5">Underworld Geodynamics</span></a></div><div class="flex items-center flex-grow w-auto"><div class="flex-grow hidden text-md lg:block"><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R2j5cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>About</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R335cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>Underworld</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R3j5cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>Technical Notes</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div></div><div class="flex-grow block"></div><button type="button" aria-haspopup="dialog" aria-expanded="false" data-state="closed" class="myst-search-bar flex items-center h-10 aspect-square sm:w-64 text-left text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 myst-search-bar-disabled hover:ring-blue-500 dark:hover:ring-blue-500 hover:border-blue-500 dark:hover:border-blue-500"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="p-2.5 h-10 w-10 aspect-square"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clip-rule="evenodd"></path></svg><span class="myst-search-text-placeholder hidden sm:block grow">Search</span><div aria-hidden="true" class="myst-search-shortcut items-center hidden mx-1 font-mono text-sm text-gray-600 dark:text-gray-300 sm:flex gap-x-1"><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none hide-mac">CTRL</kbd><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none show-mac">⌘</kbd><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none ">K</kbd><script>
+;(() => {
+const script = document.currentScript;
+const root = script.parentElement;
+
+const isMac = /mac/i.test(
+      window.navigator.userAgentData?.platform ?? window.navigator.userAgent,
+    );
+root.querySelectorAll(".hide-mac").forEach(node => {node.classList.add(isMac ? "hidden" : "block")});
+root.querySelectorAll(".show-mac").forEach(node => {node.classList.add(!isMac ? "hidden" : "block")});
+})()</script></div></button><button class="myst-theme-button theme shrink-0 rounded-full border border-stone-700 dark:border-white hover:bg-neutral-100 border-solid overflow-hidden text-stone-700 dark:text-white hover:text-stone-500 dark:hover:text-neutral-800 w-8 h-8 ml-3" title="Toggle theme between light and dark mode" aria-label="Toggle theme between light and dark mode"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-theme-moon-icon h-full w-full p-[18%] hidden dark:block"><path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z" clip-rule="evenodd"></path></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-theme-sun-icon h-full w-full p-[18%] dark:hidden"><path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.758 17.303a.75.75 0 0 0-1.061-1.06l-1.591 1.59a.75.75 0 0 0 1.06 1.061l1.591-1.59ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.697 7.757a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 0 0-1.061 1.06l1.59 1.591Z"></path></svg></button><div class="block sm:hidden"></div><div class="hidden sm:block"></div></div></nav></div><div class="myst-primary-sidebar fixed xl:article-grid grid-gap xl:w-full xl:pointer-events-none overflow-auto max-xl:w-[75vw] max-xl:max-w-[350px] max-xl:!top-0 max-xl:h-screen hidden z-10" style="top:60px"><div class="myst-primary-sidebar-pointer pointer-events-auto xl:col-margin-left flex-col overflow-hidden max-xl:h-full hidden xl:flex"><div class="myst-primary-sidebar-nav flex-grow py-6 overflow-y-auto primary-scrollbar"><nav aria-label="Navigation" class="myst-primary-sidebar-topnav overflow-y-hidden transition-opacity lg:hidden ml-3 xl:ml-0 mr-3 max-w-[350px]"><div class="w-full px-1 dark:text-white font-medium"><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/d8ebfa6b05undefined">About</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:Ripsp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:Ripsp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/d8ebfa6b05undefined">Underworld</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:R12psp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:R12psp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/d8ebfa6b05undefined">Technical Notes</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:R1ipsp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:R1ipsp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div></div></nav><div class="my-3 border-b-2 lg:hidden"></div><nav aria-label="Table of Contents" class="myst-primary-sidebar-toc flex-grow overflow-y-hidden transition-opacity ml-3 xl:ml-0 mr-3 max-w-[350px]"><div class="myst-toc w-full px-1 dark:text-white"><a title="Underworld Geodynamics" class="block break-words focus:outline outline-blue-200 outline-2 rounded myst-toc-item p-2 my-1 rounded-lg hover:bg-slate-300/30 font-bold" href="/underworldcode.org-preview/d8ebfa6b05/">Underworld Geodynamics</a><a title="Running Underworld in a Browser: Any Repository, Any Version" class="block break-words focus:outline outline-blue-200 outline-2 rounded myst-toc-item p-2 my-1 rounded-lg myst-toc-item-exact bg-blue-300/30" href="/underworldcode.org-preview/d8ebfa6b05/running-underworld-in-a-browser">Running Underworld in a Browser: Any Repository, Any Version</a></div></nav></div><div class="myst-primary-sidebar-footer flex-none py-6 transition-all duration-700 translate-y-6 opacity-0 ml-3 xl:ml-0 mr-3 max-w-[350px]"><a class="myst-made-with-myst flex mx-auto text-gray-700 w-fit hover:text-blue-700 dark:text-gray-200 dark:hover:text-blue-400" href="https://mystmd.org/made-with-myst" target="_blank" rel="noreferrer"><svg style="width:24px;height:24px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" stroke="none"><g id="icon"><path fill="currentColor" d="M23.8,54.8v-3.6l4.7-0.8V17.5l-4.7-0.8V13H36l13.4,31.7h0.2l13-31.7h12.6v3.6l-4.7,0.8v32.9l4.7,0.8v3.6h-15
+          v-3.6l4.9-0.8V20.8H65L51.4,53.3h-3.8l-14-32.5h-0.1l0.2,17.4v12.1l5,0.8v3.6H23.8z"></path><path fill="#F37726" d="M47,86.9c0-5.9-3.4-8.8-10.1-8.8h-8.4c-5.2,0-9.4-1.3-12.5-3.8c-3.1-2.5-5.4-6.2-6.8-11l4.8-1.6
+          c1.8,5.6,6.4,8.6,13.8,8.8h9.2c6.4,0,10.8,2.5,13.1,7.5c2.3-5,6.7-7.5,13.1-7.5h8.4c7.8,0,12.7-2.9,14.6-8.7l4.8,1.6
+          c-1.4,4.9-3.6,8.6-6.8,11.1c-3.1,2.5-7.3,3.7-12.4,3.8H63c-6.7,0-10,2.9-10,8.8"></path></g></svg><span class="self-center ml-2 text-sm">Made with MyST</span></a></div></div></div><main class="article-grid grid-gap"><article class="article-grid subgrid-gap col-screen article content"><div class="hidden"></div><div id="skip-to-frontmatter" aria-label="article frontmatter" class="myst-fm-block mb-8 pt-9"><div class="myst-fm-block-header flex items-center mb-5 h-6 text-sm font-light"><div class="flex-grow"></div><div class="myst-fm-block-badges"><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" class="myst-fm-license-cc-badge opacity-50 hover:opacity-100 text-inherit hover:text-inherit myst-fm-license-content" aria-label="Content License: Creative Commons Attribution 4.0 International (CC-BY-4.0)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-license-cc-icon myst-fm-license-cc-icon-main inline-block mx-1"><title>Content License: Creative Commons Attribution 4.0 International (CC-BY-4.0)</title><path d="M12 2.2c2.7 0 5 1 7 2.9.9.9 1.6 2 2.1 3.1.5 1.2.7 2.4.7 3.8 0 1.3-.2 2.6-.7 3.8-.5 1.2-1.2 2.2-2.1 3.1-1 .9-2 1.7-3.2 2.2-1.2.5-2.5.7-3.7.7s-2.6-.3-3.8-.8c-1.2-.5-2.2-1.2-3.2-2.1s-1.6-2-2.1-3.2-.8-2.4-.8-3.7c0-1.3.2-2.5.7-3.7S4.2 6 5.1 5.1C7 3.2 9.3 2.2 12 2.2zM12 4c-2.2 0-4.1.8-5.6 2.3C5.6 7.1 5 8 4.6 9c-.4 1-.6 2-.6 3s.2 2.1.6 3c.4 1 1 1.8 1.8 2.6S8 19 9 19.4c1 .4 2 .6 3 .6s2.1-.2 3-.6c1-.4 1.9-1 2.7-1.8 1.5-1.5 2.3-3.3 2.3-5.6 0-1.1-.2-2.1-.6-3.1-.4-1-1-1.8-1.7-2.6C16.1 4.8 14.2 4 12 4zm-.1 6.4l-1.3.7c-.1-.3-.3-.5-.5-.6-.2-.1-.4-.2-.6-.2-.9 0-1.3.6-1.3 1.7 0 .5.1.9.3 1.3.2.3.5.5 1 .5.6 0 1-.3 1.2-.8l1.2.6c-.3.5-.6.9-1.1 1.1-.5.3-1 .4-1.5.4-.9 0-1.6-.3-2.1-.8-.5-.6-.8-1.3-.8-2.3 0-.9.3-1.7.8-2.2.6-.6 1.3-.8 2.1-.8 1.2 0 2.1.4 2.6 1.4zm5.6 0l-1.3.7c-.1-.3-.3-.5-.5-.6-.2-.1-.4-.2-.6-.2-.9 0-1.3.6-1.3 1.7 0 .5.1.9.3 1.3.2.3.5.5 1 .5.6 0 1-.3 1.2-.8l1.2.6c-.3.5-.6.9-1.1 1.1-.4.2-.9.3-1.4.3-.9 0-1.6-.3-2.1-.8s-.8-1.3-.8-2.2c0-.9.3-1.7.8-2.2.5-.5 1.2-.8 2-.8 1.2 0 2.1.4 2.6 1.4z"></path></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-license-cc-icon myst-fm-license-cc-icon-by inline-block mr-1"><title>Credit must be given to the creator</title><path d="M12 2.2c2.7 0 5 .9 6.9 2.8 1.9 1.9 2.8 4.2 2.8 6.9s-.9 5-2.8 6.8c-2 1.9-4.3 2.9-7 2.9-2.6 0-4.9-1-6.9-2.9-1.8-1.7-2.8-4-2.8-6.7s1-5 2.9-6.9C7 3.2 9.3 2.2 12 2.2zM12 4c-2.2 0-4.1.8-5.6 2.3C4.8 8 4 9.9 4 12c0 2.2.8 4 2.4 5.6C8 19.2 9.8 20 12 20c2.2 0 4.1-.8 5.7-2.4 1.5-1.5 2.3-3.3 2.3-5.6 0-2.2-.8-4.1-2.3-5.7C16.1 4.8 14.2 4 12 4zm2.6 5.6v4h-1.1v4.7h-3v-4.7H9.4v-4c0-.2.1-.3.2-.4.1-.2.2-.2.4-.2h4c.2 0 .3.1.4.2.2.1.2.2.2.4zm-4-2.5c0-.9.5-1.4 1.4-1.4s1.4.5 1.4 1.4c0 .9-.5 1.4-1.4 1.4s-1.4-.5-1.4-1.4z"></path></svg></a><a href="https://en.wikipedia.org/wiki/Open_access" target="_blank" rel="noopener noreferrer" title="Open Access" class="myst-fm-open-access-badge text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-block-open-access-icon mr-1 inline-block opacity-60 hover:opacity-100 hover:text-[#E18435]"><path d="M17.1 12.6h-2V7.5c0-1.7-1.4-3.1-3-3.1-.8 0-1.6.3-2.2.9-.6.5-.9 1.3-.9 2.2v.7H7v-.7c0-1.4.5-2.7 1.5-3.7s2.2-1.5 3.6-1.5 2.6.5 3.6 1.5 1.5 2.3 1.5 3.7v5.1z"></path><path d="M12 21.8c-.8 0-1.6-.2-2.3-.5-.7-.3-1.4-.8-1.9-1.3-.6-.6-1-1.2-1.3-2-.3-.8-.5-1.6-.5-2.4s.2-1.6.5-2.4c.3-.7.7-1.4 1.3-2s1.2-1 1.9-1.3c.7-.3 1.5-.5 2.3-.5.8 0 1.6.2 2.3.5.7.3 1.4.8 1.9 1.3.6.6 1 1.2 1.3 2 .3.8.5 1.6.5 2.4s-.2 1.6-.5 2.4c-.3.7-.7 1.4-1.3 2-.6.6-1.2 1-1.9 1.3-.7.3-1.5.5-2.3.5zm0-10.3c-2.2 0-4 1.8-4 4.1s1.8 4.1 4 4.1 4-1.8 4-4.1-1.8-4.1-4-4.1z"></path><circle cx="12" cy="15.6" r="1.7"></circle></svg></a><a href="https://github.com/underworld-technical-notes/underworldcode.org" title="GitHub Repository: underworld-technical-notes/underworldcode.org" target="_blank" rel="noopener noreferrer" class="myst-fm-github-link text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-github-icon inline-block mr-1 opacity-60 hover:opacity-100"><path d="M12 2.5c-5.4 0-9.8 4.4-9.8 9.7 0 4.3 2.8 8 6.7 9.2.5.1.7-.2.7-.5v-1.8c-2.4.5-3.1-.6-3.3-1.1-.1-.3-.6-1.1-1-1.4-.3-.2-.8-.6 0-.6s1.3.7 1.5 1c.9 1.5 2.3 1.1 2.8.8.1-.6.3-1.1.6-1.3-2.2-.2-4.4-1.1-4.4-4.8 0-1.1.4-1.9 1-2.6-.1-.2-.4-1.2.1-2.6 0 0 .8-.3 2.7 1 .8-.2 1.6-.3 2.4-.3.8 0 1.7.1 2.4.3 1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.3.1 2.6.6.7 1 1.5 1 2.6 0 3.7-2.3 4.6-4.4 4.8.4.3.7.9.7 1.8V21c0 .3.2.6.7.5 3.9-1.3 6.6-4.9 6.6-9.2 0-5.4-4.4-9.8-9.8-9.8z"></path></svg></a></div><a href="https://github.com/underworld-technical-notes/underworldcode.org/edit/main/articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md" title="Edit This Page" target="_blank" rel="noopener noreferrer" class="myst-fm-edit-link text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="myst-fm-edit-icon inline-block mr-1 opacity-60 hover:opacity-100"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"></path></svg></a><div class="myst-fm-downloads-dropdown relative flex inline-block mx-1 grow-0" data-headlessui-state=""></div></div><h1 class="myst-fm-block-title mb-0">Running Underworld in a Browser: Any Repository, Any Version</h1><header class="myst-fm-authors-affiliations mt-4 not-prose"><div class="myst-fm-authors-grid grid grid-cols-1 sm:grid-cols-2 gap-y-1"><div class="myst-fm-author-col"><span class="myst-fm-author font-semibold text-sm"><button class="myst-fm-author-popover focus:shadow-[0_0_0_2px] focus:shadow-black outline-none hover:underline" aria-label="Author Details" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:R2t8ucp:" data-state="closed"><span class="myst-fm-author-name">Louis Moresi</span></button><a class="myst-fm-author-icon-link ml-1" href="https://orcid.org/0000-0003-3685-174X" title="ORCID: 0000-0003-3685-174X" target="_blank" rel="noopener noreferrer"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1rem" height="1rem" class="myst-fm-author-icon inline-block text-gray-400 -translate-y-[0.1em] myst-fm-author-icon-orcid hover:text-[#A9C751]"><path d="M21.8 12c0 5.4-4.4 9.8-9.8 9.8S2.2 17.4 2.2 12 6.6 2.2 12 2.2s9.8 4.4 9.8 9.8zM8.2 5.8c-.4 0-.8.3-.8.8s.3.8.8.8.8-.4.8-.8-.3-.8-.8-.8zm2.3 9.6h1.2v-6h1.8c2.3 0 3.3 1.4 3.3 3s-1.5 3-3.3 3h-3v1.1H9V8.3H7.7v8.2h5.9c3.3 0 4.5-2.2 4.5-4.1s-1.2-4.1-4.3-4.1h-3.2l-.1 7.1z"></path></svg></a></span></div><div class="myst-fm-affiliation-col text-sm"><div class="myst-fm-affiliation-item">Australian National University<!-- --> </div></div></div></header><div class="myst-fm-block-date-doi flex mt-2 text-sm font-light"><time dateTime="2026-08-11" class="myst-fm-date-string text-spacer">August 11, 2026</time><div class="myst-fm-doi-badge flex-none" title="DOI (Digital Object Identifier)"><a class="myst-fm-doi-link font-light no-underline hover:font-light hover:underline text-inherit hover:text-inherit" target="_blank" rel="noopener noreferrer" href="https://doi.org/10.6084/m9.figshare.33216996">https://doi.org/10.6084/m9.figshare.33216996</a></div></div></div><div class="block my-10 lg:sticky lg:z-10 lg:h-0 lg:pt-0 lg:my-0 lg:ml-10 lg:col-margin-right" style="top:60px"><nav></nav></div><div id="skip-to-article"></div><div class="uwtn-banner"><img id="vdDhocrfYG" style="margin-left:auto;margin-right:auto" src="/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg" data-canonical-url="figures/banner.jpg" class=""/><div class="uwtn-credit">Photo by <a target="_blank" rel="noreferrer" href="https://unsplash.com/@jbl12761?utm_source=underworld-technical-notes&amp;utm_medium=referral&amp;utm_campaign=api-credit" class="link whitespace-nowrap"><span class="link-text whitespace-normal">James Lee</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a> / <a target="_blank" rel="noreferrer" href="https://unsplash.com/?utm_source=underworld-technical-notes&amp;utm_medium=referral&amp;utm_campaign=api-credit" class="link whitespace-nowrap"><span class="link-text whitespace-normal">Unsplash</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a></div></div><p>Somebody reads a paper and wants to run the model; they have forty minutes. They
+will not have time to install PETSc. They may not have a compiler. If the answer is “clone
+this, then build these dependencies”, the answer is really: “no thanks”.</p><p>Our solution to this is <em>one link</em>. It opens JupyterLab in a browser, with
+<strong>any released version</strong> of Underworld already running, and <strong>any public
+repository</strong> pulled in beside it. Those three choices are
+independent, and the repository being launched needs nothing added to it — no
+Dockerfile, no <code>.binder/</code> directory, no configuration at all.</p><p>This article describes the four pieces that make that work, and the one additional
+requirement peculiar to Underworld: it compiles C while a model runs, so the
+image has to carry a compiler.</p><h2 id="the-classroom-problem" class="relative group"><span class="heading-text">The classroom problem</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#the-classroom-problem" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>Forty minutes is a busy researcher’s attention span and about the time it takes to
+go for coffee and forget what you were focused on. It’s the upper limit.
+The case that drove this work was teaching a class, where the arithmetic is harsher.</p><p>I have watched a two-hour practical with thirty students go like this: forty minutes
+installing, forty minutes on the six laptops where the install went wrong, and
+the remainder on the actual tasks. Departmental lab machines fix this until the
+practical needs a version they do not have, or a student wants to continue at
+home.</p><p>What a class <em>actually needs</em> turns out to be modest:</p><ul><li><p><strong>Nothing installed.</strong> A browser, on whatever the student owns.</p></li><li><p><strong>Everyone on the same version</strong>, all semester. If the practicals were
+written against <code>v3.1.0</code>, then <code>v3.1.0</code> is what they run in week nine, no
+matter what happened on <code>development</code> in the meantime.</p></li><li><p><strong>One link per practical</strong>, each opening the folder for that week, so nobody
+is navigating a file tree to find where they are supposed to be.</p></li><li><p><strong>Corrections that take effect immediately.</strong> Fix the notebook, push, and the
+next student to reload the page gets the fixes — no reissued handout.</p></li></ul><p><strong>Before university level, this is felt more acutely.</strong> A high school cannot
+repurpose a departmental research cluster, and teachers often have no permission to install
+<em>anything</em> on a managed device. A link opens the same way a video does. Some of
+what Underworld produces is useful well before undergraduate level — a fault
+slipping and the ground deforming around it, a slab sinking, plates pulling
+apart — a class that could never be asked to install a finite element code
+can be asked to click something and change a number to see what happens.</p><p>We ran <a target="_blank" rel="noreferrer" href="https://www.underworldcode.org/underworld-low-fat-cloud/" class="link whitespace-nowrap"><span class="link-text whitespace-normal">our own cloud</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a> for exactly this problem. It worked, but it also needed somebody to run it, pay for
+it, and be available when it broke (a few minutes before a class).</p><p><strong>There is a simpler way to do things</strong> !</p><h2 id="the-four-pieces" class="relative group"><span class="heading-text">The four pieces</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#the-four-pieces" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>Each does a single job:</p><ol start="1"><li><p>A <strong>container image</strong> with Underworld already built, published to the GitHub
+Container Registry.</p></li><li><p>A <strong>launcher repository</strong> — almost empty, just instructions for firing up the
+containers on binder.</p></li><li><p>Two <strong>GitHub workflows</strong> that build the Underworld image for each release and modify
+the launcher repository to announce the new release.</p></li><li><p><strong>nbgitpuller</strong>, which clones the reader’s repository into a running session.</p></li></ol><h2 id="the-container-image" class="relative group"><span class="heading-text">The container image</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#the-container-image" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>The image is built in stages and then stripped, because binder loves lightweight images and we need reliable, fast launches. Once the code is built, anything the run time does not need comes out of the container:</p><div aria-label="table content" class="overflow-auto"><table class=""><tbody><tr class=""><th class="">Removed</th><th class="">Saved</th></tr><tr class=""><td class=""><code>docs_legacy</code></td><td class="">229 MB</td></tr><tr class=""><td class="">pixi package cache</td><td class="">~500 MB</td></tr><tr class=""><td class=""><code>conda-meta</code> metadata</td><td class="">24 MB</td></tr><tr class=""><td class="">man pages, <code>__pycache__</code>, <code>*.pyc</code>, test suites</td><td class="">tens of MB</td></tr></tbody></table></div><p>The git clone is <code>--depth 1 --single-branch</code>, which keeps <code>.git</code> at about 5 MB.
+It is kept rather than deleted, because a shallow history is still enough to <code>git pull</code>
+if we need updates for any reason.</p><p>The Linux/Underworld runtime is around 2.7 GB, but we have to split that into layers inside the
+container — another binder reliability measure. What we can’t delete is the compiler toolchain and the C header files
+because Underworld <a class="link" href="/underworldcode.org-preview/d8ebfa6b05/how-underworld3-turns-sympy-into-c/">compiles sympy to C code</a>
+when it runs.</p><h2 id="the-launcher-repository" class="relative group"><span class="heading-text">The launcher repository</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#the-launcher-repository" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p><code>underworldcode/uw3-binder-launcher</code> contains, per branch, a <code>.binder/Dockerfile</code>
+of two meaningful lines:</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-dockerfile" style="white-space:pre">FROM ghcr.io/underworldcode/uw3-base:v3.1.0-slim
+ENV UW3_BRANCH=v3.1.0</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><p>That is the whole thing. It exists, rather than binder being pointed straight at
+the Underworld repository, because mybinder caches on the commit hash of the
+repository it launches. Underworld changes daily, and so does any repository where
+you are working on content (like the class you are teaching !)</p><p>The launcher almost never changes, so the cache almost always hits, and the Underworld example
+arrives as a pre-built image. A first launch after a release is slow; launches after that are quick.</p><h2 id="the-release-workflows" class="relative group"><span class="heading-text">The release workflows</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#the-release-workflows" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p><em>This is the fiddly part.</em> In the Underworld repository, <code>binder-image.yml</code> runs whenever
+something in the repository requires the container to be rebuilt e.g. a new release tag is created or a push is made to
+the main branch. It then builds the image, pushes it to the GitHub Container Registry tagged for the branch or release, and
+notifies the launcher:</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-yaml" style="white-space:pre">- name: Trigger launcher update
+  uses: peter-evans/repository-dispatch@v2
+  with:
+    repository: underworldcode/uw3-binder-launcher
+    event-type: image-updated
+    client-payload: &#x27;{&quot;branch&quot;: &quot;...&quot;, &quot;ref_type&quot;: &quot;...&quot;}&#x27;</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><p>In the <strong><em>launcher</em></strong> repository, <code>update-image.yml</code> listens for that and behaves
+differently according to what arrived:</p><ul><li><p><strong>A branch push</strong> updates the existing launcher branch’s <code>Dockerfile</code> to
+point at the new image. <code>main</code> and <code>development</code> therefore track the Underworld code repository.</p></li><li><p><strong>A release tag</strong> creates a <em>new launcher branch</em> named for the tag,
+containing a frozen <code>Dockerfile</code> pinned to that release’s image.</p></li></ul><p>A release branch is written once, and nothing afterwards changes it. <code>v0.99</code>
+will still be <code>v0.99</code> in five years. The release and its launcher are made in the same
+run, so they cannot drift apart.</p><h2 id="nbgitpuller" class="relative group"><span class="heading-text">nbgitpuller</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#nbgitpuller" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>The launcher image carries <a target="_blank" rel="noreferrer" href="https://nbgitpuller.readthedocs.io/" class="link whitespace-nowrap"><span class="link-text whitespace-normal">nbgitpuller</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a>, which clones a repository into the session at start-up and merges updates on
+later launches. That has three consequences:</p><ul><li><p>A repository needs <strong>no</strong> binder configuration. The environment comes from
+the launcher; the notebooks come from the third-party repository.</p></li><li><p>It is pulled <strong>fresh on every launch</strong>, so a correction pushed now is live for
+the next person who clicks the launch link.</p></li><li><p>The repository requirements are: public on GitHub, notebooks using the <code>python3</code> kernel,
+and <code>import underworld3 as uw</code>.</p></li></ul><h2 id="the-url" class="relative group"><span class="heading-text">The URL</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#the-url" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>The link says three things: which Underworld version, which repository, and where to
+start inside that repository.</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-text" style="white-space:pre">https://mybinder.org/v2/gh/underworldcode/uw3-binder-launcher/VERSION
+    ?urlpath=git-pull
+     &amp;repo=https://github.com/USER/REPO
+     &amp;branch=BRANCH
+     &amp;urlpath=lab/tree/REPO/WHERE</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><div aria-label="table content" class="overflow-auto"><table class=""><tbody><tr class=""><th class="">Part</th><th class="">What it selects</th></tr><tr class=""><td class=""><code>VERSION</code></td><td class="">the launcher branch: <code>main</code>, <code>development</code>, or a release such as <code>v3.1.0</code></td></tr><tr class=""><td class=""><code>repo</code></td><td class="">the repository to clone alongside Underworld</td></tr><tr class=""><td class=""><code>branch</code></td><td class="">which branch of it</td></tr><tr class=""><td class="">the second <code>urlpath</code></td><td class="">where JupyterLab opens: a folder, or one notebook</td></tr></tbody></table></div><p>Both <code>urlpath</code> parameters are needed. The first tells binder to hand over to
+nbgitpuller; the second is nbgitpuller’s own instruction about where to land
+once it has finished cloning.</p><p><strong>The escaping.</strong> That plain form is not what gets pasted. It is a URL nested
+inside a URL, so everything after <code>git-pull</code> must be percent-encoded — and the
+repository address, one level deeper again, is encoded twice. <code>/</code> becomes
+<code>%2F</code> at one level and <code>%252F</code> at two. That is why the working links look the
+way they do, and why we wrote a script for it (that forty-minute rule applies here too) !</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-bash" style="white-space:pre">python scripts/binder_wizard.py myuser/my-course main tutorials/intro.ipynb</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><p>That emits the encoded URL and a ready-to-paste badge in Markdown, HTML or
+reStructuredText — which is how a <strong>Launch</strong> button gets onto a course or paper
+repository.</p><h2 id="setting-up-a-course" class="relative group"><span class="heading-text">Setting up a course</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#setting-up-a-course" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>Put the practicals in one public repository, a folder per week:</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-text" style="white-space:pre">geodynamics-2026/
+    week-01-convection/
+    week-02-rheology/
+    week-03-subduction/</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><p>Then issue one link per week, identical apart from the folder, and all naming
+the same release:</p><div class="relative myst-code group not-prose my-5 text-sm shadow hover:shadow-md dark:shadow-2xl dark:shadow-neutral-900 bg-stone-200/10"><div aria-label="code block content" class="block overflow-auto p-3 myst-code-body hljs"><pre style="background-color:#fff;padding:0;margin:0;background:transparent"><code class="language-text" style="white-space:pre">.../uw3-binder-launcher/v3.1.0?...&amp;urlpath=lab/tree/geodynamics-2026/week-01-convection
+.../uw3-binder-launcher/v3.1.0?...&amp;urlpath=lab/tree/geodynamics-2026/week-02-rheology</code></pre></div><button title="Copy to Clipboard" class="inline-flex items-center opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 active:opacity-100 cursor-pointer ml-2 transition-color duration-200 ease-in-out text-blue-400 hover:text-blue-500 absolute right-1 myst-code-copy-icon top-1" aria-pressed="false" aria-label="Copy code to clipboard"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path></svg></button></div><p>Nothing else is needed: no accounts, no lab image, no install instructions, and
+no version drift over the semester. A fix pushed on Tuesday is what the
+Wednesday group gets.</p><p><strong>One practical caution.</strong> <a target="_blank" rel="noreferrer" href="http://mybinder.org" class="link whitespace-nowrap"><span class="link-text whitespace-normal">mybinder.org</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a> is free and shared, and thirty
+simultaneous launches is a real load on it. The cache works in your favour (the first launch
+pulls the image and the rest are quick) so it is worth
+clicking the link yourself an hour before the class.</p><p>If <a target="_blank" rel="noreferrer" href="http://mybinder.org" class="link whitespace-nowrap"><span class="link-text whitespace-normal">mybinder.org</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a> is busy or down, the practical is down.
+So be careful relying on it for an exam !</p><p>There is no persistency between sessions, so make sure students save their work regularly to
+a drive they own.</p><h2 id="limits" class="relative group"><span class="heading-text">Limits</span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#limits" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><p>The <strong>environment</strong> is guaranteed. Pinning to <code>v3.1.0</code> fixes Underworld, its
+dependencies, and the compiler that builds its generated C.</p><p>Data is a different matter. A notebook that downloads a dataset at run time is
+only as reproducible as that download. If it is critical data, put a sample version in the repository.</p><p>Three limits come with not running servers:</p><ul><li><p><strong>Sessions are ephemeral.</strong> There is no home directory. Push the work to git
+or download it before closing the tab.</p></li><li><p><strong><a target="_blank" rel="noreferrer" href="http://mybinder.org" class="link whitespace-nowrap"><span class="link-text whitespace-normal">mybinder.org</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a> is a free, shared service.</strong> It is busy sometimes, and it has
+memory and CPU limits. It is for teaching, demonstrating and trying things —
+not for production runs.</p></li><li><p><strong>Public repositories only</strong>, because nbgitpuller has to be able to see the notebooks to bring them over.</p></li></ul><div class="uwtn-discuss"><div class="uwtn-discuss-head">Comments</div><div class="uwtn-discuss-body">Discussion of these notes happens in GitHub Discussions, so it stays with the source and is searchable alongside it.</div><div class="uwtn-discuss-links"><a target="_blank" rel="noreferrer" href="https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions?discussions_q=running-underworld-in-a-browser" class="link whitespace-nowrap"><span class="link-text whitespace-normal">Read the discussion</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a><a target="_blank" rel="noreferrer" href="https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions/new?category=general&amp;title=running-underworld-in-a-browser" class="link whitespace-nowrap"><span class="link-text whitespace-normal">Start one</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" class="link-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg></a></div></div><div class="myst-backmatter-parts"></div></article></main><script>((a,l)=>{if(!window.history.state||!window.history.state.key){let u=Math.random().toString(32).slice(2);window.history.replaceState({key:u},"")}try{let d=JSON.parse(sessionStorage.getItem(a)||"{}")[l||window.history.state.key];typeof d=="number"&&window.scrollTo(0,d)}catch(u){console.error(u),sessionStorage.removeItem(a)}})("positions", null)</script><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/entry.client-PCJPW7TK.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-AQ2CODAG.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-JJXTQVMA.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-OZE3FFNP.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-RUUCG5OS.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-C4DFGG5C.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-J7TUH54J.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-FZ2S7OYD.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-JEM6JXYA.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-34XIY2DH.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-KQM5FBHR.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-OCWQY3HK.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-7HNKBP4B.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-CUKUDK3R.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-3EBOCCHJ.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-O4VQNZ62.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-4OEDG4JQ.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-GUCIBHGO.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/root-3VHQT63W.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-SHVDI3JB.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/routes/$-O2KOSX5W.js"/><script>window.__remixContext = {"url":"/running-underworld-in-a-browser","state":{"loaderData":{"root":{"config":{"version":3,"myst":"1.10.1","title":"Underworld Geodynamics","options":{"hide_footer_links":true,"favicon":"/underworldcode.org-preview/d8ebfa6b05/build/uwtn-favicon-5cce186964b1ee63a19c40f7782a1a81.ico","logo_text":"Underworld Geodynamics","numbered_references":true,"style":"/underworldcode.org-preview/d8ebfa6b05/build/uwtn-6533add2c7a35c54a24995b8ce7d6542.css"},"nav":[{"title":"About","children":[{"title":"Who we are","url":"/ugcomm"},{"title":"Credits","url":"/credits"},{"title":"How to cite","url":"/how-to-cite-underworld"}]},{"title":"Underworld","children":[{"title":"Introduction to Underworld","url":"/intro-to-underworld"},{"title":"Run in the cloud","url":"/auscope-cloud"},{"title":"Model exchange","url":"/underworld-model-exchange"},{"title":"Publications using Underworld","url":"/publications-using-uw"}]},{"title":"Technical Notes","children":[{"title":"All notes","url":"/notes"},{"title":"Browse by topic","url":"/topics"},{"title":"Submit a note","url":"/submit"}]}],"actions":[],"projects":[{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Geodynamics","description":"The Underworld geodynamics code: what it is, how to run it, and the Technical Notes series of methods, benchmarks and worked examples.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"running-underworld-in-a-browser","title":"Running Underworld in a Browser: Any Repository, Any Version","description":"One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.","date":"2026-08-11","thumbnail":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg","thumbnailOptimized":"","banner":"/banner-6bfdbb83899b2890943b30d46d253d47.jpg","bannerOptimized":"","tags":[],"level":1}]}]},"CONTENT_CDN_PORT":"3100","MODE":"static","BASE_URL":"/underworldcode.org-preview/d8ebfa6b05"},"routes/$":{"config":{"version":3,"myst":"1.10.1","title":"Underworld Geodynamics","options":{"hide_footer_links":true,"favicon":"/underworldcode.org-preview/d8ebfa6b05/build/uwtn-favicon-5cce186964b1ee63a19c40f7782a1a81.ico","logo_text":"Underworld Geodynamics","numbered_references":true,"style":"/underworldcode.org-preview/d8ebfa6b05/build/uwtn-6533add2c7a35c54a24995b8ce7d6542.css"},"nav":[{"title":"About","children":[{"title":"Who we are","url":"/ugcomm"},{"title":"Credits","url":"/credits"},{"title":"How to cite","url":"/how-to-cite-underworld"}]},{"title":"Underworld","children":[{"title":"Introduction to Underworld","url":"/intro-to-underworld"},{"title":"Run in the cloud","url":"/auscope-cloud"},{"title":"Model exchange","url":"/underworld-model-exchange"},{"title":"Publications using Underworld","url":"/publications-using-uw"}]},{"title":"Technical Notes","children":[{"title":"All notes","url":"/notes"},{"title":"Browse by topic","url":"/topics"},{"title":"Submit a note","url":"/submit"}]}],"actions":[],"projects":[{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Geodynamics","description":"The Underworld geodynamics code: what it is, how to run it, and the Technical Notes series of methods, benchmarks and worked examples.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"running-underworld-in-a-browser","title":"Running Underworld in a Browser: Any Repository, Any Version","description":"One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.","date":"2026-08-11","thumbnail":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg","thumbnailOptimized":"","banner":"/banner-6bfdbb83899b2890943b30d46d253d47.jpg","bannerOptimized":"","tags":[],"level":1}]}]},"page":{"version":3,"kind":"Article","sha256":"20bc4b4e4f2cf949f0fd4b418bfeda448198a7401a6b56983497f1097416ab03","slug":"running-underworld-in-a-browser","location":"/articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md","dependencies":[],"frontmatter":{"title":"Running Underworld in a Browser: Any Repository, Any Version","description":"One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.","banner":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg","keywords":["Underworld Code","Python/Jupyter"],"authors":[{"nameParsed":{"literal":"Louis Moresi","given":"Louis","family":"Moresi"},"name":"Louis Moresi","orcid":"0000-0003-3685-174X","affiliations":["Australian National University"],"id":"contributors-running-underworld-in-a-browser-generated-uid-0"}],"affiliations":[{"id":"Australian National University","name":"Australian National University"}],"date":"2026-08-11","doi":"10.6084/m9.figshare.33216996","license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true}},"exports":[],"open_access":true,"github":"https://github.com/underworld-technical-notes/underworldcode.org","source_url":"https://github.com/underworld-technical-notes/underworldcode.org/blob/main/articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md","edit_url":"https://github.com/underworld-technical-notes/underworldcode.org/edit/main/articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md","thumbnail":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg"},"mdast":{"type":"root","children":[{"type":"block","children":[{"type":"div","class":"uwtn-banner","children":[{"type":"image","url":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg","key":"vdDhocrfYG","urlSource":"figures/banner.jpg"},{"type":"div","class":"uwtn-credit","children":[{"type":"text","value":"Photo by ","key":"prFNBFBOAy"},{"type":"link","url":"https://unsplash.com/@jbl12761?utm_source=underworld-technical-notes\u0026utm_medium=referral\u0026utm_campaign=api-credit","children":[{"type":"text","value":"James Lee","key":"IzJkIz7mIy"}],"urlSource":"https://unsplash.com/@jbl12761?utm_source=underworld-technical-notes\u0026utm_medium=referral\u0026utm_campaign=api-credit","key":"hR5sKI4Je3"},{"type":"text","value":" / ","key":"dw4ryHWspY"},{"type":"link","url":"https://unsplash.com/?utm_source=underworld-technical-notes\u0026utm_medium=referral\u0026utm_campaign=api-credit","children":[{"type":"text","value":"Unsplash","key":"fWfRCSkBQd"}],"urlSource":"https://unsplash.com/?utm_source=underworld-technical-notes\u0026utm_medium=referral\u0026utm_campaign=api-credit","key":"XbLLrKnfc0"}],"key":"y3mPcT2EQ6"}],"key":"QCcTRQb5HT"},{"type":"paragraph","position":{"start":{"line":34,"column":1},"end":{"line":36,"column":1}},"children":[{"type":"text","value":"Somebody reads a paper and wants to run the model; they have forty minutes. They\nwill not have time to install PETSc. They may not have a compiler. If the answer is “clone\nthis, then build these dependencies”, the answer is really: “no thanks”.","position":{"start":{"line":34,"column":1},"end":{"line":34,"column":1}},"key":"g4LPGg5qBz"}],"key":"wvzK44EC8r"},{"type":"paragraph","position":{"start":{"line":38,"column":1},"end":{"line":42,"column":1}},"children":[{"type":"text","value":"Our solution to this is ","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"xewWXc2lwr"},{"type":"emphasis","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"children":[{"type":"text","value":"one link","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"KnkwMjR52o"}],"key":"m5At9HPLiI"},{"type":"text","value":". It opens JupyterLab in a browser, with\n","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"yE5KmDnrt2"},{"type":"strong","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"children":[{"type":"text","value":"any released version","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"ue6CLftEgB"}],"key":"tXr1f6xPtI"},{"type":"text","value":" of Underworld already running, and ","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"ylLvQCfy8q"},{"type":"strong","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"children":[{"type":"text","value":"any public\nrepository","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"haq2LwGODn"}],"key":"mokYabKoxA"},{"type":"text","value":" pulled in beside it. Those three choices are\nindependent, and the repository being launched needs nothing added to it — no\nDockerfile, no ","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"LG0iQnNfLh"},{"type":"inlineCode","value":".binder/","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"SYxPtNClUf"},{"type":"text","value":" directory, no configuration at all.","position":{"start":{"line":38,"column":1},"end":{"line":38,"column":1}},"key":"VgZvEIG2ge"}],"key":"UK5tUIY8Uw"},{"type":"paragraph","position":{"start":{"line":44,"column":1},"end":{"line":46,"column":1}},"children":[{"type":"text","value":"This article describes the four pieces that make that work, and the one additional\nrequirement peculiar to Underworld: it compiles C while a model runs, so the\nimage has to carry a compiler.","position":{"start":{"line":44,"column":1},"end":{"line":44,"column":1}},"key":"NKZebtKAuI"}],"key":"GyhAjVB5xV"},{"type":"heading","depth":2,"position":{"start":{"line":50,"column":1},"end":{"line":50,"column":1}},"children":[{"type":"text","value":"The classroom problem","position":{"start":{"line":50,"column":1},"end":{"line":50,"column":1}},"key":"tCuJMqhbUq"}],"identifier":"the-classroom-problem","label":"The classroom problem","html_id":"the-classroom-problem","implicit":true,"key":"ps59gse7fs"},{"type":"paragraph","position":{"start":{"line":52,"column":1},"end":{"line":54,"column":1}},"children":[{"type":"text","value":"Forty minutes is a busy researcher’s attention span and about the time it takes to\ngo for coffee and forget what you were focused on. It’s the upper limit.\nThe case that drove this work was teaching a class, where the arithmetic is harsher.","position":{"start":{"line":52,"column":1},"end":{"line":52,"column":1}},"key":"a3iQbY8vDl"}],"key":"gAYBlhV8Fi"},{"type":"paragraph","position":{"start":{"line":56,"column":1},"end":{"line":60,"column":1}},"children":[{"type":"text","value":"I have watched a two-hour practical with thirty students go like this: forty minutes\ninstalling, forty minutes on the six laptops where the install went wrong, and\nthe remainder on the actual tasks. Departmental lab machines fix this until the\npractical needs a version they do not have, or a student wants to continue at\nhome.","position":{"start":{"line":56,"column":1},"end":{"line":56,"column":1}},"key":"csRyT3gVsS"}],"key":"zTBHLaOybp"},{"type":"paragraph","position":{"start":{"line":62,"column":1},"end":{"line":62,"column":1}},"children":[{"type":"text","value":"What a class ","position":{"start":{"line":62,"column":1},"end":{"line":62,"column":1}},"key":"M0DD5Z9S8k"},{"type":"emphasis","position":{"start":{"line":62,"column":1},"end":{"line":62,"column":1}},"children":[{"type":"text","value":"actually needs","position":{"start":{"line":62,"column":1},"end":{"line":62,"column":1}},"key":"uWYk6hzvSn"}],"key":"I3FupPhy8q"},{"type":"text","value":" turns out to be modest:","position":{"start":{"line":62,"column":1},"end":{"line":62,"column":1}},"key":"rNZzYaLlDl"}],"key":"glKCLPAcDl"},{"type":"list","ordered":false,"spread":false,"position":{"start":{"line":64,"column":1},"end":{"line":72,"column":1}},"children":[{"type":"listItem","spread":true,"position":{"start":{"line":64,"column":1},"end":{"line":64,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":64,"column":1},"end":{"line":64,"column":1}},"children":[{"type":"text","value":"Nothing installed.","position":{"start":{"line":64,"column":1},"end":{"line":64,"column":1}},"key":"hQbRgDScQq"}],"key":"b9k0d1aM06"},{"type":"text","value":" A browser, on whatever the student owns.","position":{"start":{"line":64,"column":1},"end":{"line":64,"column":1}},"key":"L41HoTaz6B"}],"key":"O0ZgKb4kFN"}],"key":"falQjWi49o"},{"type":"listItem","spread":true,"position":{"start":{"line":65,"column":1},"end":{"line":67,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"children":[{"type":"text","value":"Everyone on the same version","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"uDM7RDOZuA"}],"key":"eI9y4Hwo4q"},{"type":"text","value":", all semester. If the practicals were\nwritten against ","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"AG3U7Oljuo"},{"type":"inlineCode","value":"v3.1.0","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"Bf8DxNbacp"},{"type":"text","value":", then ","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"cpabBBLJej"},{"type":"inlineCode","value":"v3.1.0","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"KDnxhvzFhd"},{"type":"text","value":" is what they run in week nine, no\nmatter what happened on ","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"UWBfvTr23V"},{"type":"inlineCode","value":"development","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"sdzSwuNNaX"},{"type":"text","value":" in the meantime.","position":{"start":{"line":65,"column":1},"end":{"line":65,"column":1}},"key":"HlmTvrZdbq"}],"key":"r8RhAbfD3F"}],"key":"MPCZyBGTKi"},{"type":"listItem","spread":true,"position":{"start":{"line":68,"column":1},"end":{"line":69,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":68,"column":1},"end":{"line":68,"column":1}},"children":[{"type":"text","value":"One link per practical","position":{"start":{"line":68,"column":1},"end":{"line":68,"column":1}},"key":"s0NZKx8jcK"}],"key":"j7yAyF6f8i"},{"type":"text","value":", each opening the folder for that week, so nobody\nis navigating a file tree to find where they are supposed to be.","position":{"start":{"line":68,"column":1},"end":{"line":68,"column":1}},"key":"gS8xlkbIIF"}],"key":"FBHTvPimZb"}],"key":"p0qVK7L0Xw"},{"type":"listItem","spread":true,"position":{"start":{"line":70,"column":1},"end":{"line":72,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":70,"column":1},"end":{"line":70,"column":1}},"children":[{"type":"text","value":"Corrections that take effect immediately.","position":{"start":{"line":70,"column":1},"end":{"line":70,"column":1}},"key":"SOXAjekLWe"}],"key":"oTbc2sbNcm"},{"type":"text","value":" Fix the notebook, push, and the\nnext student to reload the page gets the fixes — no reissued handout.","position":{"start":{"line":70,"column":1},"end":{"line":70,"column":1}},"key":"zz9xYPBO5E"}],"key":"oXNskWBsYb"}],"key":"RJxZJCyn45"}],"key":"GhTIle3P4d"},{"type":"paragraph","position":{"start":{"line":73,"column":1},"end":{"line":79,"column":1}},"children":[{"type":"strong","position":{"start":{"line":73,"column":1},"end":{"line":73,"column":1}},"children":[{"type":"text","value":"Before university level, this is felt more acutely.","position":{"start":{"line":73,"column":1},"end":{"line":73,"column":1}},"key":"g93AlMEWre"}],"key":"w1oDYoSVUV"},{"type":"text","value":" A high school cannot\nrepurpose a departmental research cluster, and teachers often have no permission to install\n","position":{"start":{"line":73,"column":1},"end":{"line":73,"column":1}},"key":"NqPVNxlFgi"},{"type":"emphasis","position":{"start":{"line":73,"column":1},"end":{"line":73,"column":1}},"children":[{"type":"text","value":"anything","position":{"start":{"line":73,"column":1},"end":{"line":73,"column":1}},"key":"nVcu5boBTf"}],"key":"PgbuSnECK4"},{"type":"text","value":" on a managed device. A link opens the same way a video does. Some of\nwhat Underworld produces is useful well before undergraduate level — a fault\nslipping and the ground deforming around it, a slab sinking, plates pulling\napart — a class that could never be asked to install a finite element code\ncan be asked to click something and change a number to see what happens.","position":{"start":{"line":73,"column":1},"end":{"line":73,"column":1}},"key":"bOkUiTzfPu"}],"key":"shKvIbm3tl"},{"type":"paragraph","position":{"start":{"line":81,"column":1},"end":{"line":82,"column":1}},"children":[{"type":"text","value":"We ran ","position":{"start":{"line":81,"column":1},"end":{"line":81,"column":1}},"key":"q5XhNmUTAi"},{"type":"link","url":"https://www.underworldcode.org/underworld-low-fat-cloud/","position":{"start":{"line":81,"column":1},"end":{"line":81,"column":1}},"children":[{"type":"text","value":"our own cloud","position":{"start":{"line":81,"column":1},"end":{"line":81,"column":1}},"key":"kX90BGq2le"}],"urlSource":"https://www.underworldcode.org/underworld-low-fat-cloud/","key":"l6mUb4nCpm"},{"type":"text","value":" for exactly this problem. It worked, but it also needed somebody to run it, pay for\nit, and be available when it broke (a few minutes before a class).","position":{"start":{"line":81,"column":1},"end":{"line":81,"column":1}},"key":"hsENWhmvCP"}],"key":"Q8NAhcvrVq"},{"type":"paragraph","position":{"start":{"line":84,"column":1},"end":{"line":84,"column":1}},"children":[{"type":"strong","position":{"start":{"line":84,"column":1},"end":{"line":84,"column":1}},"children":[{"type":"text","value":"There is a simpler way to do things","position":{"start":{"line":84,"column":1},"end":{"line":84,"column":1}},"key":"lMqZZd4vUq"}],"key":"n9K37pjXEv"},{"type":"text","value":" !","position":{"start":{"line":84,"column":1},"end":{"line":84,"column":1}},"key":"QL0en6GM9g"}],"key":"K6SkiScM4B"},{"type":"heading","depth":2,"position":{"start":{"line":88,"column":1},"end":{"line":88,"column":1}},"children":[{"type":"text","value":"The four pieces","position":{"start":{"line":88,"column":1},"end":{"line":88,"column":1}},"key":"UCt8LYzmJv"}],"identifier":"the-four-pieces","label":"The four pieces","html_id":"the-four-pieces","implicit":true,"key":"aQ6VuZl4fP"},{"type":"paragraph","position":{"start":{"line":90,"column":1},"end":{"line":90,"column":1}},"children":[{"type":"text","value":"Each does a single job:","position":{"start":{"line":90,"column":1},"end":{"line":90,"column":1}},"key":"EocQHH7Mqh"}],"key":"M2Su5VPU44"},{"type":"list","ordered":true,"start":1,"spread":false,"position":{"start":{"line":92,"column":1},"end":{"line":104,"column":1}},"children":[{"type":"listItem","spread":true,"position":{"start":{"line":92,"column":1},"end":{"line":94,"column":1}},"children":[{"type":"paragraph","position":{"start":{"line":92,"column":1},"end":{"line":93,"column":1}},"children":[{"type":"text","value":"A ","position":{"start":{"line":92,"column":1},"end":{"line":92,"column":1}},"key":"klWFm2gaWS"},{"type":"strong","position":{"start":{"line":92,"column":1},"end":{"line":92,"column":1}},"children":[{"type":"text","value":"container image","position":{"start":{"line":92,"column":1},"end":{"line":92,"column":1}},"key":"MGRPKRhx7B"}],"key":"Y94FjVLd5d"},{"type":"text","value":" with Underworld already built, published to the GitHub\nContainer Registry.","position":{"start":{"line":92,"column":1},"end":{"line":92,"column":1}},"key":"togJpkUxpT"}],"key":"nQ7HARQnlg"}],"key":"z5VFhmqSz1"},{"type":"listItem","spread":true,"position":{"start":{"line":95,"column":1},"end":{"line":97,"column":1}},"children":[{"type":"paragraph","position":{"start":{"line":95,"column":1},"end":{"line":96,"column":1}},"children":[{"type":"text","value":"A ","position":{"start":{"line":95,"column":1},"end":{"line":95,"column":1}},"key":"ozuQ0P9vJa"},{"type":"strong","position":{"start":{"line":95,"column":1},"end":{"line":95,"column":1}},"children":[{"type":"text","value":"launcher repository","position":{"start":{"line":95,"column":1},"end":{"line":95,"column":1}},"key":"OWLxqjiQ4z"}],"key":"Qbq3Qeg4Mp"},{"type":"text","value":" — almost empty, just instructions for firing up the\ncontainers on binder.","position":{"start":{"line":95,"column":1},"end":{"line":95,"column":1}},"key":"eO75vfWGuF"}],"key":"rNQ8tjEHpP"}],"key":"HsD6RoGzwx"},{"type":"listItem","spread":true,"position":{"start":{"line":98,"column":1},"end":{"line":100,"column":1}},"children":[{"type":"paragraph","position":{"start":{"line":98,"column":1},"end":{"line":99,"column":1}},"children":[{"type":"text","value":"Two ","position":{"start":{"line":98,"column":1},"end":{"line":98,"column":1}},"key":"whN9ZidkLI"},{"type":"strong","position":{"start":{"line":98,"column":1},"end":{"line":98,"column":1}},"children":[{"type":"text","value":"GitHub workflows","position":{"start":{"line":98,"column":1},"end":{"line":98,"column":1}},"key":"PSCpBc7069"}],"key":"kWRd18jH2G"},{"type":"text","value":" that build the Underworld image for each release and modify\nthe launcher repository to announce the new release.","position":{"start":{"line":98,"column":1},"end":{"line":98,"column":1}},"key":"BUfNc6MN8S"}],"key":"QYq7z100a6"}],"key":"PVWuafVUFW"},{"type":"listItem","spread":true,"position":{"start":{"line":101,"column":1},"end":{"line":104,"column":1}},"children":[{"type":"paragraph","position":{"start":{"line":101,"column":1},"end":{"line":101,"column":1}},"children":[{"type":"strong","position":{"start":{"line":101,"column":1},"end":{"line":101,"column":1}},"children":[{"type":"text","value":"nbgitpuller","position":{"start":{"line":101,"column":1},"end":{"line":101,"column":1}},"key":"XJ1P8ka6JK"}],"key":"q7DAclXHNi"},{"type":"text","value":", which clones the reader’s repository into a running session.","position":{"start":{"line":101,"column":1},"end":{"line":101,"column":1}},"key":"rkesxptFyH"}],"key":"MYRGJzUmLC"}],"key":"Zth1fEVYmg"}],"key":"zcGkvjfAfy"},{"type":"heading","depth":2,"position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"children":[{"type":"text","value":"The container image","position":{"start":{"line":105,"column":1},"end":{"line":105,"column":1}},"key":"q1BGoQqBBO"}],"identifier":"the-container-image","label":"The container image","html_id":"the-container-image","implicit":true,"key":"x7OrYunsZp"},{"type":"paragraph","position":{"start":{"line":109,"column":1},"end":{"line":109,"column":1}},"children":[{"type":"text","value":"The image is built in stages and then stripped, because binder loves lightweight images and we need reliable, fast launches. Once the code is built, anything the run time does not need comes out of the container:","position":{"start":{"line":109,"column":1},"end":{"line":109,"column":1}},"key":"sr5FJ7pyA3"}],"key":"Rki8dtQkVt"},{"type":"table","position":{"start":{"line":111,"column":1},"end":{"line":116,"column":1}},"children":[{"type":"tableRow","position":{"start":{"line":111,"column":1},"end":{"line":111,"column":1}},"children":[{"type":"tableCell","header":true,"position":{"start":{"line":111,"column":1},"end":{"line":111,"column":1}},"children":[{"type":"text","value":"Removed","position":{"start":{"line":111,"column":1},"end":{"line":111,"column":1}},"key":"SV7b4gytS7"}],"key":"X3ZcK4X1Mf"},{"type":"tableCell","header":true,"position":{"start":{"line":111,"column":1},"end":{"line":111,"column":1}},"children":[{"type":"text","value":"Saved","position":{"start":{"line":111,"column":1},"end":{"line":111,"column":1}},"key":"x2AEuZpH45"}],"key":"ILxjLKZ0m9"}],"key":"dNhxqNaNjl"},{"type":"tableRow","position":{"start":{"line":113,"column":1},"end":{"line":113,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":113,"column":1},"end":{"line":113,"column":1}},"children":[{"type":"inlineCode","value":"docs_legacy","position":{"start":{"line":113,"column":1},"end":{"line":113,"column":1}},"key":"uJHFDSsbTr"}],"key":"OVyO0Mfhu5"},{"type":"tableCell","position":{"start":{"line":113,"column":1},"end":{"line":113,"column":1}},"children":[{"type":"text","value":"229 MB","position":{"start":{"line":113,"column":1},"end":{"line":113,"column":1}},"key":"ftvL1cGli5"}],"key":"AKRk5iJh7j"}],"key":"dfaCLx3Hfz"},{"type":"tableRow","position":{"start":{"line":114,"column":1},"end":{"line":114,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":114,"column":1},"end":{"line":114,"column":1}},"children":[{"type":"text","value":"pixi package cache","position":{"start":{"line":114,"column":1},"end":{"line":114,"column":1}},"key":"miFkW00PUE"}],"key":"dXqIESpHrn"},{"type":"tableCell","position":{"start":{"line":114,"column":1},"end":{"line":114,"column":1}},"children":[{"type":"text","value":"~500 MB","position":{"start":{"line":114,"column":1},"end":{"line":114,"column":1}},"key":"mvNfPk4tDD"}],"key":"ASjgTIAU6Q"}],"key":"hQZXXIRhRf"},{"type":"tableRow","position":{"start":{"line":115,"column":1},"end":{"line":115,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":115,"column":1},"end":{"line":115,"column":1}},"children":[{"type":"inlineCode","value":"conda-meta","position":{"start":{"line":115,"column":1},"end":{"line":115,"column":1}},"key":"iL6l6pg2FS"},{"type":"text","value":" metadata","position":{"start":{"line":115,"column":1},"end":{"line":115,"column":1}},"key":"iaArlma1qJ"}],"key":"j5EkZCH3cF"},{"type":"tableCell","position":{"start":{"line":115,"column":1},"end":{"line":115,"column":1}},"children":[{"type":"text","value":"24 MB","position":{"start":{"line":115,"column":1},"end":{"line":115,"column":1}},"key":"yLSLXTRjkp"}],"key":"XdHV58RJTj"}],"key":"txLEJ1B9o2"},{"type":"tableRow","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"children":[{"type":"text","value":"man pages, ","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"key":"SEYH7zX4yh"},{"type":"inlineCode","value":"__pycache__","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"key":"IJqdqF9tHk"},{"type":"text","value":", ","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"key":"VFvYKVnBUj"},{"type":"inlineCode","value":"*.pyc","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"key":"nx0K0HqUG5"},{"type":"text","value":", test suites","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"key":"hKeYREbLyb"}],"key":"FlTLvqEpv8"},{"type":"tableCell","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"children":[{"type":"text","value":"tens of MB","position":{"start":{"line":116,"column":1},"end":{"line":116,"column":1}},"key":"Jew31kKQv9"}],"key":"qHqf4wk3ej"}],"key":"YHZJk6gNS8"}],"key":"uqX1fV3ylf"},{"type":"paragraph","position":{"start":{"line":118,"column":1},"end":{"line":120,"column":1}},"children":[{"type":"text","value":"The git clone is ","position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"key":"UPqluxCHRg"},{"type":"inlineCode","value":"--depth 1 --single-branch","position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"key":"yK35mvPc1D"},{"type":"text","value":", which keeps ","position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"key":"q6o97EHnSQ"},{"type":"inlineCode","value":".git","position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"key":"Usqs3Sa90U"},{"type":"text","value":" at about 5 MB.\nIt is kept rather than deleted, because a shallow history is still enough to ","position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"key":"RvotoceQ9h"},{"type":"inlineCode","value":"git pull","position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"key":"CCSWlwkJoH"},{"type":"text","value":"\nif we need updates for any reason.","position":{"start":{"line":118,"column":1},"end":{"line":118,"column":1}},"key":"ORTOiqhJju"}],"key":"Z0dRqx7a9O"},{"type":"paragraph","position":{"start":{"line":122,"column":1},"end":{"line":125,"column":1}},"children":[{"type":"text","value":"The Linux/Underworld runtime is around 2.7 GB, but we have to split that into layers inside the\ncontainer — another binder reliability measure. What we can’t delete is the compiler toolchain and the C header files\nbecause Underworld ","position":{"start":{"line":122,"column":1},"end":{"line":122,"column":1}},"key":"Sg3XiOAKrx"},{"type":"link","url":"/how-underworld3-turns-sympy-into-c/","position":{"start":{"line":122,"column":1},"end":{"line":122,"column":1}},"children":[{"type":"text","value":"compiles sympy to C code","position":{"start":{"line":122,"column":1},"end":{"line":122,"column":1}},"key":"gngEgm37zy"}],"urlSource":"/how-underworld3-turns-sympy-into-c/","key":"LregeCJTIk"},{"type":"text","value":"\nwhen it runs.","position":{"start":{"line":122,"column":1},"end":{"line":122,"column":1}},"key":"EXDIDNS3bl"}],"key":"Fn1MFcPm6F"},{"type":"heading","depth":2,"position":{"start":{"line":129,"column":1},"end":{"line":129,"column":1}},"children":[{"type":"text","value":"The launcher repository","position":{"start":{"line":129,"column":1},"end":{"line":129,"column":1}},"key":"rQpch7OORq"}],"identifier":"the-launcher-repository","label":"The launcher repository","html_id":"the-launcher-repository","implicit":true,"key":"fSBzJY3D3g"},{"type":"paragraph","position":{"start":{"line":131,"column":1},"end":{"line":132,"column":1}},"children":[{"type":"inlineCode","value":"underworldcode/uw3-binder-launcher","position":{"start":{"line":131,"column":1},"end":{"line":131,"column":1}},"key":"gO6J0KJ5RH"},{"type":"text","value":" contains, per branch, a ","position":{"start":{"line":131,"column":1},"end":{"line":131,"column":1}},"key":"yrkHDLNmxw"},{"type":"inlineCode","value":".binder/Dockerfile","position":{"start":{"line":131,"column":1},"end":{"line":131,"column":1}},"key":"X4THImv9gw"},{"type":"text","value":"\nof two meaningful lines:","position":{"start":{"line":131,"column":1},"end":{"line":131,"column":1}},"key":"s74sic1a1k"}],"key":"vT2i8cmd39"},{"type":"code","lang":"dockerfile","value":"FROM ghcr.io/underworldcode/uw3-base:v3.1.0-slim\nENV UW3_BRANCH=v3.1.0","position":{"start":{"line":134,"column":1},"end":{"line":137,"column":1}},"key":"gBfkWRGb26"},{"type":"paragraph","position":{"start":{"line":139,"column":1},"end":{"line":142,"column":1}},"children":[{"type":"text","value":"That is the whole thing. It exists, rather than binder being pointed straight at\nthe Underworld repository, because mybinder caches on the commit hash of the\nrepository it launches. Underworld changes daily, and so does any repository where\nyou are working on content (like the class you are teaching !)","position":{"start":{"line":139,"column":1},"end":{"line":139,"column":1}},"key":"nS8HpqKog2"}],"key":"Ml2SXriO78"},{"type":"paragraph","position":{"start":{"line":144,"column":1},"end":{"line":145,"column":1}},"children":[{"type":"text","value":"The launcher almost never changes, so the cache almost always hits, and the Underworld example\narrives as a pre-built image. A first launch after a release is slow; launches after that are quick.","position":{"start":{"line":144,"column":1},"end":{"line":144,"column":1}},"key":"bzUl0pcbKr"}],"key":"e2V3PD2JBt"},{"type":"heading","depth":2,"position":{"start":{"line":147,"column":1},"end":{"line":147,"column":1}},"children":[{"type":"text","value":"The release workflows","position":{"start":{"line":147,"column":1},"end":{"line":147,"column":1}},"key":"W5kaqPcjL7"}],"identifier":"the-release-workflows","label":"The release workflows","html_id":"the-release-workflows","implicit":true,"key":"wW8kxtJi1J"},{"type":"paragraph","position":{"start":{"line":149,"column":1},"end":{"line":152,"column":1}},"children":[{"type":"emphasis","position":{"start":{"line":149,"column":1},"end":{"line":149,"column":1}},"children":[{"type":"text","value":"This is the fiddly part.","position":{"start":{"line":149,"column":1},"end":{"line":149,"column":1}},"key":"sHFjIBH4mQ"}],"key":"JNSATjTYxF"},{"type":"text","value":" In the Underworld repository, ","position":{"start":{"line":149,"column":1},"end":{"line":149,"column":1}},"key":"of8aJu97pc"},{"type":"inlineCode","value":"binder-image.yml","position":{"start":{"line":149,"column":1},"end":{"line":149,"column":1}},"key":"JfJY5mZWOm"},{"type":"text","value":" runs whenever\nsomething in the repository requires the container to be rebuilt e.g. a new release tag is created or a push is made to\nthe main branch. It then builds the image, pushes it to the GitHub Container Registry tagged for the branch or release, and\nnotifies the launcher:","position":{"start":{"line":149,"column":1},"end":{"line":149,"column":1}},"key":"Txbt6OAUvA"}],"key":"M9deAR9upZ"},{"type":"code","lang":"yaml","value":"- name: Trigger launcher update\n  uses: peter-evans/repository-dispatch@v2\n  with:\n    repository: underworldcode/uw3-binder-launcher\n    event-type: image-updated\n    client-payload: '{\"branch\": \"...\", \"ref_type\": \"...\"}'","position":{"start":{"line":154,"column":1},"end":{"line":161,"column":1}},"key":"FOVOk2jW3c"},{"type":"paragraph","position":{"start":{"line":163,"column":1},"end":{"line":164,"column":1}},"children":[{"type":"text","value":"In the ","position":{"start":{"line":163,"column":1},"end":{"line":163,"column":1}},"key":"g6sE1ZN2Fo"},{"type":"strong","position":{"start":{"line":163,"column":1},"end":{"line":163,"column":1}},"children":[{"type":"emphasis","position":{"start":{"line":163,"column":1},"end":{"line":163,"column":1}},"children":[{"type":"text","value":"launcher","position":{"start":{"line":163,"column":1},"end":{"line":163,"column":1}},"key":"YIZH33wct4"}],"key":"agks4yrK7C"}],"key":"Lqg6sHWIbl"},{"type":"text","value":" repository, ","position":{"start":{"line":163,"column":1},"end":{"line":163,"column":1}},"key":"sEow616TIg"},{"type":"inlineCode","value":"update-image.yml","position":{"start":{"line":163,"column":1},"end":{"line":163,"column":1}},"key":"V7vcuCpJ6a"},{"type":"text","value":" listens for that and behaves\ndifferently according to what arrived:","position":{"start":{"line":163,"column":1},"end":{"line":163,"column":1}},"key":"NjH7c8U03y"}],"key":"CuF8VmhTL1"},{"type":"list","ordered":false,"spread":false,"position":{"start":{"line":166,"column":1},"end":{"line":170,"column":1}},"children":[{"type":"listItem","spread":true,"position":{"start":{"line":166,"column":1},"end":{"line":167,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"children":[{"type":"text","value":"A branch push","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"G0YbcEzcGO"}],"key":"sQCcgeLBOt"},{"type":"text","value":" updates the existing launcher branch’s ","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"GtHIlZv1cW"},{"type":"inlineCode","value":"Dockerfile","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"VGu4vwZkqP"},{"type":"text","value":" to\npoint at the new image. ","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"TgtwaZQd0t"},{"type":"inlineCode","value":"main","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"F9OJPzVKtw"},{"type":"text","value":" and ","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"lf2y83pKDi"},{"type":"inlineCode","value":"development","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"VPx9RlcKJw"},{"type":"text","value":" therefore track the Underworld code repository.","position":{"start":{"line":166,"column":1},"end":{"line":166,"column":1}},"key":"U3PTy5noZL"}],"key":"lORQXcRoMU"}],"key":"MhvVsknUJa"},{"type":"listItem","spread":true,"position":{"start":{"line":168,"column":1},"end":{"line":170,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"children":[{"type":"text","value":"A release tag","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"key":"bPsY4r9OnY"}],"key":"d8NwkqvOfZ"},{"type":"text","value":" creates a ","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"key":"L0fNZFShRh"},{"type":"emphasis","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"children":[{"type":"text","value":"new launcher branch","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"key":"EVCM3fSuiT"}],"key":"JKSTECbazr"},{"type":"text","value":" named for the tag,\ncontaining a frozen ","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"key":"VzfBlYmtgu"},{"type":"inlineCode","value":"Dockerfile","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"key":"FdlHGYihHi"},{"type":"text","value":" pinned to that release’s image.","position":{"start":{"line":168,"column":1},"end":{"line":168,"column":1}},"key":"X9sOala3Df"}],"key":"S0pbGI2sSP"}],"key":"mu05vfb1u3"}],"key":"SBPU5VCusS"},{"type":"paragraph","position":{"start":{"line":171,"column":1},"end":{"line":173,"column":1}},"children":[{"type":"text","value":"A release branch is written once, and nothing afterwards changes it. ","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"key":"no55g3xj8x"},{"type":"inlineCode","value":"v0.99","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"key":"D2SaglxUTI"},{"type":"text","value":"\nwill still be ","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"key":"dVgQVxZCK4"},{"type":"inlineCode","value":"v0.99","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"key":"K1XDp4KzGK"},{"type":"text","value":" in five years. The release and its launcher are made in the same\nrun, so they cannot drift apart.","position":{"start":{"line":171,"column":1},"end":{"line":171,"column":1}},"key":"FSNPyXylR1"}],"key":"nRTQffdbfk"},{"type":"heading","depth":2,"position":{"start":{"line":175,"column":1},"end":{"line":175,"column":1}},"children":[{"type":"text","value":"nbgitpuller","position":{"start":{"line":175,"column":1},"end":{"line":175,"column":1}},"key":"xZJQVus4Nn"}],"identifier":"nbgitpuller","label":"nbgitpuller","html_id":"nbgitpuller","implicit":true,"key":"GnLc1V8VGf"},{"type":"paragraph","position":{"start":{"line":177,"column":1},"end":{"line":178,"column":1}},"children":[{"type":"text","value":"The launcher image carries ","position":{"start":{"line":177,"column":1},"end":{"line":177,"column":1}},"key":"ruadbuW7zm"},{"type":"link","url":"https://nbgitpuller.readthedocs.io/","position":{"start":{"line":177,"column":1},"end":{"line":177,"column":1}},"children":[{"type":"text","value":"nbgitpuller","position":{"start":{"line":177,"column":1},"end":{"line":177,"column":1}},"key":"GG1hmEqmBg"}],"urlSource":"https://nbgitpuller.readthedocs.io/","key":"jdpF2SRZSx"},{"type":"text","value":", which clones a repository into the session at start-up and merges updates on\nlater launches. That has three consequences:","position":{"start":{"line":177,"column":1},"end":{"line":177,"column":1}},"key":"ZiT7CYazOI"}],"key":"ZUhAMmnGUD"},{"type":"list","ordered":false,"spread":false,"position":{"start":{"line":180,"column":1},"end":{"line":186,"column":1}},"children":[{"type":"listItem","spread":true,"position":{"start":{"line":180,"column":1},"end":{"line":181,"column":1}},"children":[{"type":"paragraph","children":[{"type":"text","value":"A repository needs ","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"key":"gMRueDI1cp"},{"type":"strong","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"children":[{"type":"text","value":"no","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"key":"xUO7eYixoX"}],"key":"VbVEyqf97S"},{"type":"text","value":" binder configuration. The environment comes from\nthe launcher; the notebooks come from the third-party repository.","position":{"start":{"line":180,"column":1},"end":{"line":180,"column":1}},"key":"SDcb6gMDet"}],"key":"tJQB2F6RUS"}],"key":"fKBxMrqGWS"},{"type":"listItem","spread":true,"position":{"start":{"line":182,"column":1},"end":{"line":183,"column":1}},"children":[{"type":"paragraph","children":[{"type":"text","value":"It is pulled ","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"key":"eJQMxuZcxF"},{"type":"strong","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"children":[{"type":"text","value":"fresh on every launch","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"key":"QXFbkHBKqI"}],"key":"LtPKdT7a9z"},{"type":"text","value":", so a correction pushed now is live for\nthe next person who clicks the launch link.","position":{"start":{"line":182,"column":1},"end":{"line":182,"column":1}},"key":"KHoIGRk6DF"}],"key":"E9MAL48YD4"}],"key":"y3dNj89mmx"},{"type":"listItem","spread":true,"position":{"start":{"line":184,"column":1},"end":{"line":186,"column":1}},"children":[{"type":"paragraph","children":[{"type":"text","value":"The repository requirements are: public on GitHub, notebooks using the ","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"zAdfkPuHRJ"},{"type":"inlineCode","value":"python3","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"bCFV4bJkp6"},{"type":"text","value":" kernel,\nand ","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"VVjjIytUXx"},{"type":"inlineCode","value":"import underworld3 as uw","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"oPKVldkaPO"},{"type":"text","value":".","position":{"start":{"line":184,"column":1},"end":{"line":184,"column":1}},"key":"jQYCvFGnmL"}],"key":"KVLwKbs5vY"}],"key":"MbWFQwuj5m"}],"key":"Q0q0q0NTmQ"},{"type":"heading","depth":2,"position":{"start":{"line":187,"column":1},"end":{"line":187,"column":1}},"children":[{"type":"text","value":"The URL","position":{"start":{"line":187,"column":1},"end":{"line":187,"column":1}},"key":"z59bTBcSlr"}],"identifier":"the-url","label":"The URL","html_id":"the-url","implicit":true,"key":"YwcaUtyo7Z"},{"type":"paragraph","position":{"start":{"line":189,"column":1},"end":{"line":190,"column":1}},"children":[{"type":"text","value":"The link says three things: which Underworld version, which repository, and where to\nstart inside that repository.","position":{"start":{"line":189,"column":1},"end":{"line":189,"column":1}},"key":"a7tvTxzlYK"}],"key":"nFkzTtXCXQ"},{"type":"code","lang":"","value":"https://mybinder.org/v2/gh/underworldcode/uw3-binder-launcher/VERSION\n    ?urlpath=git-pull\n     \u0026repo=https://github.com/USER/REPO\n     \u0026branch=BRANCH\n     \u0026urlpath=lab/tree/REPO/WHERE","position":{"start":{"line":192,"column":1},"end":{"line":198,"column":1}},"key":"TZQcPjcPyy"},{"type":"table","position":{"start":{"line":200,"column":1},"end":{"line":205,"column":1}},"children":[{"type":"tableRow","position":{"start":{"line":200,"column":1},"end":{"line":200,"column":1}},"children":[{"type":"tableCell","header":true,"position":{"start":{"line":200,"column":1},"end":{"line":200,"column":1}},"children":[{"type":"text","value":"Part","position":{"start":{"line":200,"column":1},"end":{"line":200,"column":1}},"key":"V1OCGJkhhr"}],"key":"tHgoAV4q6b"},{"type":"tableCell","header":true,"position":{"start":{"line":200,"column":1},"end":{"line":200,"column":1}},"children":[{"type":"text","value":"What it selects","position":{"start":{"line":200,"column":1},"end":{"line":200,"column":1}},"key":"mIrakHJbjl"}],"key":"hCA2WNNdtu"}],"key":"wEBbvi9jYV"},{"type":"tableRow","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"children":[{"type":"inlineCode","value":"VERSION","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"key":"rpYp3P21oI"}],"key":"UUoLNLO926"},{"type":"tableCell","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"children":[{"type":"text","value":"the launcher branch: ","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"key":"xEQd5oVvMN"},{"type":"inlineCode","value":"main","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"key":"entrmXegBq"},{"type":"text","value":", ","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"key":"sRX9UqupK8"},{"type":"inlineCode","value":"development","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"key":"tp4n16d8hR"},{"type":"text","value":", or a release such as ","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"key":"rs8d1ItDbH"},{"type":"inlineCode","value":"v3.1.0","position":{"start":{"line":202,"column":1},"end":{"line":202,"column":1}},"key":"qEiNor5otq"}],"key":"CfwUeeWc47"}],"key":"A0hvCIbxQr"},{"type":"tableRow","position":{"start":{"line":203,"column":1},"end":{"line":203,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":203,"column":1},"end":{"line":203,"column":1}},"children":[{"type":"inlineCode","value":"repo","position":{"start":{"line":203,"column":1},"end":{"line":203,"column":1}},"key":"iguTxGWUZr"}],"key":"jsyQmIbXb1"},{"type":"tableCell","position":{"start":{"line":203,"column":1},"end":{"line":203,"column":1}},"children":[{"type":"text","value":"the repository to clone alongside Underworld","position":{"start":{"line":203,"column":1},"end":{"line":203,"column":1}},"key":"pqOsv3ddM4"}],"key":"hmmJlYBATP"}],"key":"fTHsuDEsv9"},{"type":"tableRow","position":{"start":{"line":204,"column":1},"end":{"line":204,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":204,"column":1},"end":{"line":204,"column":1}},"children":[{"type":"inlineCode","value":"branch","position":{"start":{"line":204,"column":1},"end":{"line":204,"column":1}},"key":"jy6TUv9iSa"}],"key":"i6KWtxIJtY"},{"type":"tableCell","position":{"start":{"line":204,"column":1},"end":{"line":204,"column":1}},"children":[{"type":"text","value":"which branch of it","position":{"start":{"line":204,"column":1},"end":{"line":204,"column":1}},"key":"r9L5yvSEIj"}],"key":"KJ5xRbsq6u"}],"key":"n3DZpiM1Sw"},{"type":"tableRow","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"children":[{"type":"tableCell","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"children":[{"type":"text","value":"the second ","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"key":"qOyd61h3jC"},{"type":"inlineCode","value":"urlpath","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"key":"JQK6smIXf7"}],"key":"nUpjWHTmao"},{"type":"tableCell","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"children":[{"type":"text","value":"where JupyterLab opens: a folder, or one notebook","position":{"start":{"line":205,"column":1},"end":{"line":205,"column":1}},"key":"EVdCFvgU80"}],"key":"ztLHzyjPud"}],"key":"esARCgAyb6"}],"key":"QRKynhjjaj"},{"type":"paragraph","position":{"start":{"line":207,"column":1},"end":{"line":209,"column":1}},"children":[{"type":"text","value":"Both ","position":{"start":{"line":207,"column":1},"end":{"line":207,"column":1}},"key":"DtmC6uZLul"},{"type":"inlineCode","value":"urlpath","position":{"start":{"line":207,"column":1},"end":{"line":207,"column":1}},"key":"SEVQGJHuj9"},{"type":"text","value":" parameters are needed. The first tells binder to hand over to\nnbgitpuller; the second is nbgitpuller’s own instruction about where to land\nonce it has finished cloning.","position":{"start":{"line":207,"column":1},"end":{"line":207,"column":1}},"key":"imbmRB5G31"}],"key":"nBp2tXGbvY"},{"type":"paragraph","position":{"start":{"line":211,"column":1},"end":{"line":215,"column":1}},"children":[{"type":"strong","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"children":[{"type":"text","value":"The escaping.","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"lAjWCTFvn4"}],"key":"PIHPYc1fVZ"},{"type":"text","value":" That plain form is not what gets pasted. It is a URL nested\ninside a URL, so everything after ","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"KnfzrJOUCn"},{"type":"inlineCode","value":"git-pull","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"Ff6rqWmT7R"},{"type":"text","value":" must be percent-encoded — and the\nrepository address, one level deeper again, is encoded twice. ","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"R58II9bcmI"},{"type":"inlineCode","value":"/","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"gFBGjAS2ZA"},{"type":"text","value":" becomes\n","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"yEX90buas7"},{"type":"inlineCode","value":"%2F","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"aZR3DMqkCf"},{"type":"text","value":" at one level and ","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"YkOQCAs8Sy"},{"type":"inlineCode","value":"%252F","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"U39xevXB2m"},{"type":"text","value":" at two. That is why the working links look the\nway they do, and why we wrote a script for it (that forty-minute rule applies here too) !","position":{"start":{"line":211,"column":1},"end":{"line":211,"column":1}},"key":"PC68zufjJW"}],"key":"zTx54T7ufO"},{"type":"code","lang":"bash","value":"python scripts/binder_wizard.py myuser/my-course main tutorials/intro.ipynb","position":{"start":{"line":217,"column":1},"end":{"line":219,"column":1}},"key":"vJRaRWynPL"},{"type":"paragraph","position":{"start":{"line":221,"column":1},"end":{"line":223,"column":1}},"children":[{"type":"text","value":"That emits the encoded URL and a ready-to-paste badge in Markdown, HTML or\nreStructuredText — which is how a ","position":{"start":{"line":221,"column":1},"end":{"line":221,"column":1}},"key":"iHFzIbDLpE"},{"type":"strong","position":{"start":{"line":221,"column":1},"end":{"line":221,"column":1}},"children":[{"type":"text","value":"Launch","position":{"start":{"line":221,"column":1},"end":{"line":221,"column":1}},"key":"C26W9V0SKc"}],"key":"WkVh5Q0ffF"},{"type":"text","value":" button gets onto a course or paper\nrepository.","position":{"start":{"line":221,"column":1},"end":{"line":221,"column":1}},"key":"SuQmZA78xN"}],"key":"Qim08pxtBZ"},{"type":"heading","depth":2,"position":{"start":{"line":227,"column":1},"end":{"line":227,"column":1}},"children":[{"type":"text","value":"Setting up a course","position":{"start":{"line":227,"column":1},"end":{"line":227,"column":1}},"key":"pq8qPUSgfe"}],"identifier":"setting-up-a-course","label":"Setting up a course","html_id":"setting-up-a-course","implicit":true,"key":"ncqvddILuM"},{"type":"paragraph","position":{"start":{"line":229,"column":1},"end":{"line":229,"column":1}},"children":[{"type":"text","value":"Put the practicals in one public repository, a folder per week:","position":{"start":{"line":229,"column":1},"end":{"line":229,"column":1}},"key":"Yh7g0LG1jB"}],"key":"NaRGzXfO8D"},{"type":"code","lang":"","value":"geodynamics-2026/\n    week-01-convection/\n    week-02-rheology/\n    week-03-subduction/","position":{"start":{"line":231,"column":1},"end":{"line":236,"column":1}},"key":"vesu3W2XAz"},{"type":"paragraph","position":{"start":{"line":238,"column":1},"end":{"line":239,"column":1}},"children":[{"type":"text","value":"Then issue one link per week, identical apart from the folder, and all naming\nthe same release:","position":{"start":{"line":238,"column":1},"end":{"line":238,"column":1}},"key":"WZZP90eagR"}],"key":"IU83f4yKFM"},{"type":"code","lang":"","value":".../uw3-binder-launcher/v3.1.0?...\u0026urlpath=lab/tree/geodynamics-2026/week-01-convection\n.../uw3-binder-launcher/v3.1.0?...\u0026urlpath=lab/tree/geodynamics-2026/week-02-rheology","position":{"start":{"line":241,"column":1},"end":{"line":244,"column":1}},"key":"NN1w1lrEl7"},{"type":"paragraph","position":{"start":{"line":246,"column":1},"end":{"line":248,"column":1}},"children":[{"type":"text","value":"Nothing else is needed: no accounts, no lab image, no install instructions, and\nno version drift over the semester. A fix pushed on Tuesday is what the\nWednesday group gets.","position":{"start":{"line":246,"column":1},"end":{"line":246,"column":1}},"key":"HpCUcD7Cav"}],"key":"NZcVbqYhsK"},{"type":"paragraph","position":{"start":{"line":250,"column":1},"end":{"line":253,"column":1}},"children":[{"type":"strong","position":{"start":{"line":250,"column":1},"end":{"line":250,"column":1}},"children":[{"type":"text","value":"One practical caution.","position":{"start":{"line":250,"column":1},"end":{"line":250,"column":1}},"key":"TTUdaEXNzX"}],"key":"fVMkQRuj7Y"},{"type":"text","value":" ","position":{"start":{"line":250,"column":1},"end":{"line":250,"column":1}},"key":"Cn0CBUG8J6"},{"type":"link","url":"http://mybinder.org","position":{"start":{"line":250,"column":1},"end":{"line":250,"column":1}},"children":[{"type":"text","value":"mybinder.org","position":{"start":{"line":250,"column":1},"end":{"line":250,"column":1}},"key":"zmNI3RTGrX"}],"urlSource":"http://mybinder.org","key":"AgpnqqYtd0"},{"type":"text","value":" is free and shared, and thirty\nsimultaneous launches is a real load on it. The cache works in your favour (the first launch\npulls the image and the rest are quick) so it is worth\nclicking the link yourself an hour before the class.","position":{"start":{"line":250,"column":1},"end":{"line":250,"column":1}},"key":"axvD5ufA5D"}],"key":"QrKQC82m9Z"},{"type":"paragraph","position":{"start":{"line":255,"column":1},"end":{"line":256,"column":1}},"children":[{"type":"text","value":"If ","position":{"start":{"line":255,"column":1},"end":{"line":255,"column":1}},"key":"QTTw8zUvNc"},{"type":"link","url":"http://mybinder.org","position":{"start":{"line":255,"column":1},"end":{"line":255,"column":1}},"children":[{"type":"text","value":"mybinder.org","position":{"start":{"line":255,"column":1},"end":{"line":255,"column":1}},"key":"jW807tTleL"}],"urlSource":"http://mybinder.org","key":"rHYGLVRucr"},{"type":"text","value":" is busy or down, the practical is down.\nSo be careful relying on it for an exam !","position":{"start":{"line":255,"column":1},"end":{"line":255,"column":1}},"key":"sBOVvQmp0f"}],"key":"o3uOPYqdjF"},{"type":"paragraph","position":{"start":{"line":258,"column":1},"end":{"line":259,"column":1}},"children":[{"type":"text","value":"There is no persistency between sessions, so make sure students save their work regularly to\na drive they own.","position":{"start":{"line":258,"column":1},"end":{"line":258,"column":1}},"key":"qivdFMR1lX"}],"key":"d7pmxEP6dw"},{"type":"heading","depth":2,"position":{"start":{"line":263,"column":1},"end":{"line":263,"column":1}},"children":[{"type":"text","value":"Limits","position":{"start":{"line":263,"column":1},"end":{"line":263,"column":1}},"key":"Wbhwk2wXHT"}],"identifier":"limits","label":"Limits","html_id":"limits","implicit":true,"key":"txlAUak2sN"},{"type":"paragraph","position":{"start":{"line":265,"column":1},"end":{"line":266,"column":1}},"children":[{"type":"text","value":"The ","position":{"start":{"line":265,"column":1},"end":{"line":265,"column":1}},"key":"YR3NSWCqLS"},{"type":"strong","position":{"start":{"line":265,"column":1},"end":{"line":265,"column":1}},"children":[{"type":"text","value":"environment","position":{"start":{"line":265,"column":1},"end":{"line":265,"column":1}},"key":"rf7lJw3PoT"}],"key":"uN9irwcAyn"},{"type":"text","value":" is guaranteed. Pinning to ","position":{"start":{"line":265,"column":1},"end":{"line":265,"column":1}},"key":"KzFwctJLT0"},{"type":"inlineCode","value":"v3.1.0","position":{"start":{"line":265,"column":1},"end":{"line":265,"column":1}},"key":"eMElaqSlMp"},{"type":"text","value":" fixes Underworld, its\ndependencies, and the compiler that builds its generated C.","position":{"start":{"line":265,"column":1},"end":{"line":265,"column":1}},"key":"LQBclj9euU"}],"key":"brI21fTAPl"},{"type":"paragraph","position":{"start":{"line":268,"column":1},"end":{"line":269,"column":1}},"children":[{"type":"text","value":"Data is a different matter. A notebook that downloads a dataset at run time is\nonly as reproducible as that download. If it is critical data, put a sample version in the repository.","position":{"start":{"line":268,"column":1},"end":{"line":268,"column":1}},"key":"badVYY0kGI"}],"key":"mv04BnAeDC"},{"type":"paragraph","position":{"start":{"line":271,"column":1},"end":{"line":271,"column":1}},"children":[{"type":"text","value":"Three limits come with not running servers:","position":{"start":{"line":271,"column":1},"end":{"line":271,"column":1}},"key":"jpQySExfQ3"}],"key":"cxXbdq7kK4"},{"type":"list","ordered":false,"spread":false,"position":{"start":{"line":273,"column":1},"end":{"line":281,"column":1}},"children":[{"type":"listItem","spread":true,"position":{"start":{"line":273,"column":1},"end":{"line":274,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":273,"column":1},"end":{"line":273,"column":1}},"children":[{"type":"text","value":"Sessions are ephemeral.","position":{"start":{"line":273,"column":1},"end":{"line":273,"column":1}},"key":"bv6ys5f6Kz"}],"key":"PQMbcEjUa5"},{"type":"text","value":" There is no home directory. Push the work to git\nor download it before closing the tab.","position":{"start":{"line":273,"column":1},"end":{"line":273,"column":1}},"key":"bx6LiNWHtP"}],"key":"Jwg9NpfsOj"}],"key":"Fg1ltkCJJh"},{"type":"listItem","spread":true,"position":{"start":{"line":275,"column":1},"end":{"line":277,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":275,"column":1},"end":{"line":275,"column":1}},"children":[{"type":"link","url":"http://mybinder.org","position":{"start":{"line":275,"column":1},"end":{"line":275,"column":1}},"children":[{"type":"text","value":"mybinder.org","position":{"start":{"line":275,"column":1},"end":{"line":275,"column":1}},"key":"JkYelNYwSj"}],"urlSource":"http://mybinder.org","key":"lJEtAtSy4i"},{"type":"text","value":" is a free, shared service.","position":{"start":{"line":275,"column":1},"end":{"line":275,"column":1}},"key":"ELSE3PPZji"}],"key":"U6BTtXTjaq"},{"type":"text","value":" It is busy sometimes, and it has\nmemory and CPU limits. It is for teaching, demonstrating and trying things —\nnot for production runs.","position":{"start":{"line":275,"column":1},"end":{"line":275,"column":1}},"key":"PsZuvAIqkm"}],"key":"kdDgJVxFM2"}],"key":"PnqQOaKIcY"},{"type":"listItem","spread":true,"position":{"start":{"line":278,"column":1},"end":{"line":281,"column":1}},"children":[{"type":"paragraph","children":[{"type":"strong","position":{"start":{"line":278,"column":1},"end":{"line":278,"column":1}},"children":[{"type":"text","value":"Public repositories only","position":{"start":{"line":278,"column":1},"end":{"line":278,"column":1}},"key":"tsVBTGi4fQ"}],"key":"QhMzuIwGcs"},{"type":"text","value":", because nbgitpuller has to be able to see the notebooks to bring them over.","position":{"start":{"line":278,"column":1},"end":{"line":278,"column":1}},"key":"OnG6K3izEI"}],"key":"eEwkLegXQb"}],"key":"vLFy2uOPKp"}],"key":"K7hnARpC5M"},{"type":"comment","value":" uwtn-acknowledgement ","key":"cvLEi9axjj"},{"type":"div","class":"uwtn-discuss","children":[{"type":"div","class":"uwtn-discuss-head","children":[{"type":"text","value":"Comments","key":"XbWk5q77Tv"}],"key":"hjG8eN60FB"},{"type":"div","class":"uwtn-discuss-body","children":[{"type":"text","value":"Discussion of these notes happens in GitHub Discussions, so it stays with the source and is searchable alongside it.","key":"XAXqykqZhX"}],"key":"uzr8IpqRtP"},{"type":"div","class":"uwtn-discuss-links","children":[{"type":"link","url":"https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions?discussions_q=running-underworld-in-a-browser","children":[{"type":"text","value":"Read the discussion","key":"aCfSgeqqxS"}],"urlSource":"https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions?discussions_q=running-underworld-in-a-browser","error":true,"key":"qvDL64cCdD"},{"type":"link","url":"https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions/new?category=general\u0026title=running-underworld-in-a-browser","children":[{"type":"text","value":"Start one","key":"msqK33fD65"}],"urlSource":"https://github.com/Underworld-Technical-Notes/underworldcode.org/discussions/new?category=general\u0026title=running-underworld-in-a-browser","error":true,"key":"seBefOIsP4"}],"key":"DAKkQW3F5W"}],"key":"iQVszSVyBK"}],"key":"rCMO7Y131r"}],"key":"jzJSwQVRGD"},"references":{"cite":{"order":[],"data":{}}},"footer":{"navigation":{"prev":{"title":"Underworld Geodynamics","url":"/","group":"Underworld Geodynamics"}}},"domain":"http://localhost:3000"},"project":{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Geodynamics","description":"The Underworld geodynamics code: what it is, how to run it, and the Technical Notes series of methods, benchmarks and worked examples.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"running-underworld-in-a-browser","title":"Running Underworld in a Browser: Any Repository, Any Version","description":"One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.","date":"2026-08-11","thumbnail":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg","thumbnailOptimized":"","banner":"/banner-6bfdbb83899b2890943b30d46d253d47.jpg","bannerOptimized":"","tags":[],"level":1}]}}},"actionData":null,"errors":null},"future":{"unstable_dev":false,"unstable_postcss":false,"unstable_tailwind":false,"v2_errorBoundary":true,"v2_headers":true,"v2_meta":true,"v2_normalizeFormMethod":true,"v2_routeConvention":true}};</script><script type="module" async="">import "/underworldcode.org-preview/d8ebfa6b05/build/manifest-C732C875.js";
+import * as route0 from "/underworldcode.org-preview/d8ebfa6b05/build/root-3VHQT63W.js";
+import * as route1 from "/underworldcode.org-preview/d8ebfa6b05/build/routes/$-O2KOSX5W.js";
+window.__remixRouteModules = {"root":route0,"routes/$":route1};
+
+import("/underworldcode.org-preview/d8ebfa6b05/build/entry.client-PCJPW7TK.js");</script><script id="uwtn-reader-link">
+(function () {
+  var CLASS = "uwtn-pdf-link";
+
+  function readerHref() {
+    // Built from the CURRENT path, not from "/" + slug: the preview site serves
+    // the whole site from a hashed subdirectory, and an absolute path would walk
+    // out of it to the domain root.
+    var path = window.location.pathname.replace(/\/+$/, "");
+    if (!path || /\/read$/.test(path)) return null;
+    return path + "/read/";
+  }
+
+  // 1. A visible link in the frontmatter badge row, beside the licence badge.
+  function addBadge() {
+    var href = readerHref();
+    if (!href) return;
+    var row = document.querySelector(".myst-fm-block-badges");
+    if (!row) return;                                  // not an article page
+    var existing = row.querySelector("." + CLASS);
+    if (existing) { existing.setAttribute("href", href); return; }
+    var link = document.createElement("a");
+    link.className = CLASS;
+    link.setAttribute("href", href);
+    link.setAttribute("aria-label", "Read the archival PDF");
+    link.textContent = "PDF";
+    row.insertBefore(link, row.firstChild);
+  }
+
+  // 2. The theme's Downloads menu. Its entries are rendered from the hydration
+  //    payload only when the menu opens, so there is nothing to rewrite until
+  //    then -- and a rewrite that waits for them races the reader's next click.
+  //    Catching the click is exact.
+  document.addEventListener("click", function (event) {
+    var anchor = event.target && event.target.closest
+      ? event.target.closest('a[href*="/build/"][href$=".pdf"]') : null;
+    if (!anchor) return;
+    var href = readerHref();
+    if (!href) return;
+    event.preventDefault();
+    window.location.href = href;
+  }, true);                                            // capture: before the theme
+
+  // After hydration, like the comments bootstrap: anything done earlier is undone.
+  function start() { window.setTimeout(addBadge, 0); }
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start);
+
+  // The theme routes on the client, so a new article never reloads the page.
+  var pending = null;
+  new MutationObserver(function () {
+    if (pending) return;
+    pending = window.setTimeout(function () { pending = null; addBadge(); }, 120);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script><script id="uwtn-preview-banner">
+(function () {
+  var TEXT = "PREVIEW \\u2014 note/browser-note-abstract at e10a8f5. Not published; not the citable version.";
+  var NOTICE = "Discussion will be available after publication.";
+  var ID = "uwtn-preview-bar";
+
+  function banner() {
+    if (document.getElementById(ID)) return;
+    var bar = document.createElement("div");
+    bar.id = ID;
+    bar.textContent = TEXT;
+    bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;" +
+      "background:#7a1f1f;color:#fff;font:600 13px/1.6 system-ui,sans-serif;" +
+      "padding:.45em 1em;text-align:center;letter-spacing:.01em";
+    document.body.appendChild(bar);
+    document.documentElement.style.scrollPaddingTop = "2.6em";
+  }
+
+  // The block has to be rewritten in the DOM rather than in the markup: it is
+  // in the page TWICE, once as HTML and once as JSON in the hydration payload,
+  // and React re-renders from the JSON. A string replacement in the built file
+  // is undone the moment the page becomes interactive.
+  function discussion() {
+    var body = document.querySelector(".uwtn-discuss-body");
+    if (body && body.textContent !== NOTICE) body.textContent = NOTICE;
+    var links = document.querySelector(".uwtn-discuss-links");
+    if (links) links.remove();
+  }
+
+  function attach() { banner(); discussion(); }
+
+  function start() { window.setTimeout(attach, 0); }
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start);
+
+  // Client-side routing replaces the page without reloading it.
+  var pending = null;
+  new MutationObserver(function () {
+    if (pending) return;
+    pending = window.setTimeout(function () { pending = null; attach(); }, 150);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script></body></html>

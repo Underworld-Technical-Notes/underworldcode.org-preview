@@ -1,0 +1,783 @@
+<!DOCTYPE html><html lang="en" class="" style="scroll-padding:60px"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Preview - Underworld Geodynamics</title><meta property="og:title" content="Preview - Underworld Geodynamics"/><meta name="generator" content="mystmd"/><meta name="description" content="The Underworld geodynamics code: what it is, how to run it, and the Technical Notes series of methods, benchmarks and worked examples."/><meta property="og:description" content="The Underworld geodynamics code: what it is, how to run it, and the Technical Notes series of methods, benchmarks and worked examples."/><meta name="keywords" content=""/><link rel="stylesheet" href="/underworldcode.org-preview/d8ebfa6b05/build/_assets/app-TIOB6ZNY.css"/><link rel="stylesheet" href="/underworldcode.org-preview/d8ebfa6b05/build/_assets/thebe-core-VKVHG5VY.css"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jupyter-matplotlib@0.11.3/css/mpl_widget.css"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.css" integrity="sha384-MlJdn/WNKDGXveldHDdyRP1R4CTHr3FeuDNfhsLPYrq2t0UBkUdK2jyTnXPEK1NQ" crossorigin="anonymous"/><link rel="icon" href="/underworldcode.org-preview/d8ebfa6b05/favicon.ico"/><link rel="stylesheet" href="/underworldcode.org-preview/d8ebfa6b05/myst-theme.css"/><script>
+  const savedTheme = localStorage.getItem("myst:theme");
+  const theme = window.matchMedia("(prefers-color-scheme: light)").matches ? 'light' : 'dark';
+  const classes = document.documentElement.classList;
+  const hasAnyTheme = classes.contains('light') || classes.contains('dark');
+  if (!hasAnyTheme) classes.add(savedTheme ?? theme);
+</script><script>(function(){var p=window.location.pathname;if(p.endsWith('/index.html'))window.location.replace((p.slice(0,-10)||'/')+window.location.search+window.location.hash);})();</script><style id="uwtn-inlined-style">
+/* Underworld Technical Notes — site styling.
+ *
+ * The aim is that the site and the archival PDF look like the same
+ * publication. The PDF sets its body in a serif with small-caps labels in a
+ * muted blue down the margin; the site borrows that vocabulary rather than
+ * inventing a second identity. Anything here that is merely decorative should
+ * be removed instead of elaborated.
+ */
+
+:root {
+  --uwtn-ink: #16202b;
+  --uwtn-muted: #5d6b7a;
+  --uwtn-rule: #dfe4ea;
+  --uwtn-accent: #1a4f80;        /* the PDF's theme colour, blue.darken(30%) */
+  --uwtn-paper: #ffffff;
+  --uwtn-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+                "Times New Roman", serif;
+  --uwtn-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --uwtn-ink: #e6e9ec;
+    --uwtn-muted: #9aa7b4;
+    --uwtn-rule: #2b3541;
+    --uwtn-accent: #7cb3e0;
+    --uwtn-paper: #131a21;
+  }
+}
+
+/* ---- masthead ---------------------------------------------------------- */
+
+.uwtn-masthead {
+  border-bottom: 1px solid var(--uwtn-rule);
+  padding-bottom: 1.6rem;
+  margin-bottom: 2.4rem;
+}
+
+.uwtn-kicker {
+  font-family: var(--uwtn-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  margin: 0 0 0.15rem;
+}
+
+.uwtn-wordmark {
+  font-family: var(--uwtn-serif);
+  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--uwtn-ink);
+  margin: 0 0 0.7rem;
+}
+
+.uwtn-standfirst {
+  font-family: var(--uwtn-serif);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--uwtn-muted);
+  max-width: 34em;
+  margin: 0;
+}
+
+/* ---- the feed ---------------------------------------------------------- */
+
+/* MyST strips <article>, <p class> and <time>, so entries are divs. The title
+   stays a real heading but loses its class -- hence the descendant selector. */
+.uwtn-entry {
+  border-top: 1px solid var(--uwtn-rule);
+  padding: 1.5rem 0 1.4rem;
+}
+
+.uwtn-entry:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Article id and date, echoing the identity strip down the PDF's margin. */
+.uwtn-entry-meta,
+.uwtn-kicker {
+  font-family: var(--uwtn-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin: 0 0 0.35rem;
+  display: flex;
+  gap: 0.9rem;
+}
+
+.uwtn-id { color: var(--uwtn-accent); font-weight: 600; }
+
+.uwtn-entry :is(h1, h2, h3, h4) {
+  font-family: var(--uwtn-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.3rem;
+}
+
+/* The theme's hover anchor (¶) belongs on documentation, not on a feed. */
+.uwtn-entry :is(h1, h2, h3, h4) > a[href^="#"] { display: none; }
+
+.uwtn-entry :is(h1, h2, h3, h4) a {
+  color: var(--uwtn-ink);
+  text-decoration: none;
+  background-image: linear-gradient(var(--uwtn-accent), var(--uwtn-accent));
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.18s ease;
+}
+
+.uwtn-entry :is(h1, h2, h3, h4) a:hover { background-size: 100% 1px; }
+
+.uwtn-entry-byline {
+  font-family: var(--uwtn-sans);
+  font-size: 0.82rem;
+  color: var(--uwtn-muted);
+  margin: 0 0 0.55rem;
+}
+
+.uwtn-entry-summary {
+  font-family: var(--uwtn-serif);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--uwtn-ink);
+  max-width: 38em;
+  margin: 0 0 0.7rem;
+}
+
+/* ---- affordances ------------------------------------------------------- */
+
+.uwtn-entry-links {
+  font-family: var(--uwtn-sans);
+  font-size: 0.8rem;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  align-items: baseline;
+}
+
+.uwtn-entry-links a {
+  color: var(--uwtn-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.uwtn-entry-links a:hover { border-bottom-color: currentColor; }
+
+.uwtn-read::after { content: " →"; }
+
+/* The DOI is the published identifier, so it is shown in full rather than
+   hidden behind a word. */
+.uwtn-doi-label {
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin-right: 0.35em;
+}
+
+.uwtn-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0;
+  margin: 0.7rem 0 0;
+}
+
+.uwtn-tag {
+  font-family: var(--uwtn-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--uwtn-muted);
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 2px;
+  padding: 0.1rem 0.45rem;
+}
+
+.uwtn-colophon {
+  border-top: 1px solid var(--uwtn-rule);
+  margin-top: 2.4rem;
+  padding-top: 1.2rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--uwtn-muted);
+  max-width: 38em;
+}
+
+/* ---- article pages ----------------------------------------------------- */
+
+/* Give the body the same serif as the PDF, so an article reads as the same
+   document in a different medium. Code and maths keep the theme's fonts. */
+.uwtn-article-body,
+article.content p,
+article.content li,
+article.content blockquote {
+  font-family: var(--uwtn-serif);
+  font-size: 1.02rem;
+  line-height: 1.62;
+}
+
+article.content h1,
+article.content h2,
+article.content h3 {
+  font-family: var(--uwtn-serif);
+  letter-spacing: -0.005em;
+}
+
+/* Captions read as apparatus, matching the PDF: sans, smaller, lighter. */
+article.content figcaption,
+article.content figcaption p {
+  font-family: var(--uwtn-sans);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--uwtn-muted);
+}
+
+@media (max-width: 640px) {
+  .uwtn-entry-meta { flex-direction: column; gap: 0.1rem; }
+  .uwtn-entry-title { font-size: 1.3rem; }
+}
+
+/* ---- year rules -------------------------------------------------------- */
+
+/* The feed is grouped the way the article ids are, by year. If the series ever
+   adopts volumes this label is where that happens. */
+.uwtn-year {
+  font-family: var(--uwtn-sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--uwtn-muted);
+  margin: 2.4rem 0 0.9rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid var(--uwtn-ink);
+}
+
+.uwtn-year:first-child { margin-top: 0; }
+.uwtn-year + .uwtn-entry { border-top: none; padding-top: 0.2rem; }
+
+/* ---- the lead item ----------------------------------------------------- */
+
+.uwtn-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1.6rem;
+  align-items: start;
+}
+
+.uwtn-lead .uwtn-thumb { order: 2; }
+.uwtn-lead .uwtn-entry-text { order: 1; }
+
+.uwtn-lead :is(h1, h2, h3, h4) { font-size: 2rem; line-height: 1.12; }
+.uwtn-lead .uwtn-entry-summary { font-size: 1.08rem; }
+
+.uwtn-thumb {
+  display: block;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--uwtn-rule);
+}
+
+.uwtn-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  margin: 0;
+  /* Decorative, so it should not compete with the words. */
+  filter: saturate(0.82);
+  transition: filter 0.25s ease, transform 0.4s ease;
+}
+
+.uwtn-thumb:hover img { filter: saturate(1); transform: scale(1.02); }
+
+/* ---- article banner ---------------------------------------------------- */
+
+/* Kept from the Ghost posts, and only on the web: the banner is a raw HTML
+   block, which the HTML build renders and the Typst build drops, so the
+   archival PDF stays free of decoration. */
+.uwtn-banner {
+  margin: 0 0 2rem;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--uwtn-rule);
+}
+
+.uwtn-banner img {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  /* The theme's prose rule gives every image that is not inside a <figure>
+     `margin: 2em 0`. Inside the banner's frame that reads as a white band
+     above and below the picture -- invisible on a banner with a white
+     background, obvious on a photograph. */
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .uwtn-lead { grid-template-columns: 1fr; gap: 1rem; }
+  .uwtn-lead .uwtn-thumb { order: 1; }
+  .uwtn-lead .uwtn-entry-text { order: 2; }
+  .uwtn-lead :is(h1, h2, h3, h4) { font-size: 1.5rem; }
+  .uwtn-banner img { max-height: 180px; }
+}
+
+/* ---- image credit ------------------------------------------------------ */
+
+/* Unsplash's licence asks for attribution wherever the photograph appears.
+   It sits on the image rather than beside it, so it credits without competing
+   with the article, and is always reachable — revealed on hover, and on focus
+   for anyone navigating by keyboard. */
+.uwtn-banner { position: relative; }
+
+.uwtn-credit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  max-width: 100%;
+  padding: 0.3rem 0.6rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: #fff;
+  background: rgba(12, 18, 24, 0.72);
+  backdrop-filter: blur(3px);
+  border-top-left-radius: 3px;
+  opacity: 0;
+  transform: translateY(0.3rem);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.uwtn-banner:hover .uwtn-credit,
+.uwtn-banner:focus-within .uwtn-credit { opacity: 1; transform: none; }
+
+.uwtn-credit a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Touch devices have no hover, so the credit is simply always shown. */
+@media (hover: none) {
+  .uwtn-credit { opacity: 1; transform: none; position: static; background: none;
+                 color: var(--uwtn-muted); padding: 0.4rem 0 0; }
+  .uwtn-credit a { color: var(--uwtn-accent); }
+}
+
+/* ---- topics ------------------------------------------------------------ */
+
+a.uwtn-tag { text-decoration: none; transition: border-color 0.15s ease, color 0.15s ease; }
+a.uwtn-tag:hover { color: var(--uwtn-accent); border-color: var(--uwtn-accent); }
+
+.uwtn-topic-head { border-bottom: 1px solid var(--uwtn-rule);
+                   padding-bottom: 1.2rem; margin-bottom: 2rem; }
+.uwtn-topic-head .uwtn-wordmark { font-size: clamp(1.6rem, 4vw, 2.2rem); }
+
+.uwtn-topic-list { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.uwtn-topic-link {
+  font-family: var(--uwtn-sans);
+  font-size: 0.9rem;
+  color: var(--uwtn-ink);
+  text-decoration: none;
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 3px;
+  padding: 0.45rem 0.8rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.uwtn-topic-link:hover { border-color: var(--uwtn-accent); color: var(--uwtn-accent); }
+
+.uwtn-topic-count {
+  font-size: 0.7rem;
+  color: var(--uwtn-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The searchable query token on a topic page. Visible on purpose: it tells the
+   reader the query exists, which hidden text cannot, and it is what the search
+   index is built from. */
+.uwtn-query {
+  font-family: var(--uwtn-sans);
+  font-size: 0.75rem;
+  color: var(--uwtn-muted);
+  margin-top: 0.6rem;
+}
+
+.uwtn-query code {
+  font-size: 0.75rem;
+  background: var(--uwtn-rule);
+  border-radius: 2px;
+  padding: 0.1rem 0.35rem;
+  color: var(--uwtn-ink);
+}
+
+/* Facets the series has not covered yet. Shown rather than hidden: an empty
+   subject is a statement about the corpus, not an oversight. */
+.uwtn-axis { margin-bottom: 2rem; }
+
+.uwtn-unused {
+  font-family: var(--uwtn-sans);
+  font-size: 0.72rem;
+  color: var(--uwtn-muted);
+  margin-top: 0.7rem;
+}
+
+/* ---- baked bibliography ------------------------------------------------ */
+
+/* Rendered from Zotero at build time rather than fetched by client script, so
+   it is present without JavaScript, when Zotero is down, and in the archive. */
+.uwtn-bibliography { margin-top: 1.4rem; }
+
+.uwtn-ref {
+  font-family: var(--uwtn-serif);
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--uwtn-ink);
+  padding: 0.55rem 0 0.55rem 1.4rem;
+  text-indent: -1.4rem;          /* hanging indent, as a reference list wants */
+  border-bottom: 1px solid var(--uwtn-rule);
+  max-width: 42em;
+}
+
+.uwtn-ref:last-child { border-bottom: none; }
+.uwtn-ref a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-ref a:hover { text-decoration: underline; }
+
+/* ---- discussion -------------------------------------------------------- */
+
+.uwtn-discuss {
+  margin-top: 3rem;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 3px;
+  font-family: var(--uwtn-sans);
+}
+
+.uwtn-discuss-head {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  margin-bottom: 0.45rem;
+}
+
+.uwtn-discuss-body {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--uwtn-muted);
+  max-width: 42em;
+  margin-bottom: 0.9rem;
+}
+
+.uwtn-discuss-links { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.85rem; }
+.uwtn-discuss-links a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-discuss-links a:hover { text-decoration: underline; }
+.uwtn-discuss-links a::after { content: " →"; }
+
+/* A DOI on a listing is an identifier, shown rather than linked -- see
+   scripts/build_index.py for why. */
+.uwtn-doi { color: var(--uwtn-muted); font-variant-numeric: tabular-nums; }
+
+/* ---- comments ---------------------------------------------------------- */
+
+/* Giscus's script inserts its own frame here, sized by its own postMessage
+   resizing -- there is no MyST iframe wrapper to fight. The block sits above
+   the discussion links, which remain as the fallback. */
+.uwtn-comments {
+  margin-top: 2.5rem;
+}
+
+.uwtn-comments iframe { border: none; width: 100%; }
+
+
+/* ---- front page -------------------------------------------------------- */
+
+/* The front page is Underworld's own, not the series'. It leads with the
+   software and what it is for; the Technical Notes are one thing among
+   several, reached from the header. The masthead above is reserved for
+   /notes/, so that the two pages are visibly different publications. */
+
+.uwtn-hero {
+  border-bottom: 1px solid var(--uwtn-rule);
+  padding-bottom: 1.8rem;
+  margin-bottom: 2rem;
+}
+
+.uwtn-hero-title {
+  font-family: var(--uwtn-serif);
+  font-weight: 600;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--uwtn-ink);
+  margin: 0 0 0.8rem;
+}
+
+.uwtn-hero .uwtn-standfirst { font-size: 1.15rem; max-width: 36em; }
+
+.uwtn-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.4rem;
+  align-items: center;
+  margin-top: 1.4rem;
+  font-family: var(--uwtn-sans);
+  font-size: 0.9rem;
+}
+
+.uwtn-hero-actions a { color: var(--uwtn-accent); text-decoration: none; }
+.uwtn-hero-actions a:hover { text-decoration: underline; }
+
+.uwtn-cta {
+  background: var(--uwtn-accent);
+  color: var(--uwtn-paper) !important;
+  padding: 0.5rem 1.1rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.uwtn-cta:hover { filter: brightness(1.12); text-decoration: none !important; }
+
+/* Three recent notes, as a pointer into the series rather than a feed of it.
+   Deliberately terser than .uwtn-entry: this is a signpost, not the contents. */
+.uwtn-briefs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.2rem;
+  margin: 1.6rem 0 2.4rem;
+}
+
+.uwtn-brief {
+  display: block;
+  border-top: 2px solid var(--uwtn-accent);
+  padding-top: 0.7rem;
+  text-decoration: none;
+  color: inherit;
+}
+.uwtn-brief:hover .uwtn-brief-title { text-decoration: underline; }
+
+.uwtn-brief-id {
+  display: block;
+  font-family: var(--uwtn-sans);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--uwtn-accent);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.uwtn-brief-title {
+  display: block;
+  font-family: var(--uwtn-serif);
+  font-size: 1.08rem;
+  line-height: 1.25;
+  color: var(--uwtn-ink);
+  margin-bottom: 0.35rem;
+}
+
+.uwtn-brief-summary {
+  display: block;
+  font-family: var(--uwtn-serif);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--uwtn-muted);
+}
+
+/* Section headings on the front page.
+ *
+ * A div, not a markdown heading. The theme nests headings several levels
+ * inside <main>, so a selector aimed at them either misses -- as `main > h2`
+ * did -- or has to reach through the template's own classes and breaks the
+ * next time they change. The outline is hidden on this page, so nothing is
+ * lost by not making these real headings. */
+.uwtn-section {
+  font-family: var(--uwtn-serif);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--uwtn-ink);
+  border-top: 1px solid var(--uwtn-rule);
+  padding-top: 1.6rem;
+  margin: 2.6rem 0 0.4rem;
+}
+
+.uwtn-section-note {
+  font-family: var(--uwtn-serif);
+  color: var(--uwtn-muted);
+  margin: 0 0 1.2rem;
+}
+
+/* The front page's animated band. Shaped like an article banner -- full
+   width, capped height, cropped rather than squashed -- so the two read as the
+   same kind of object. The class may land on the image itself or on a wrapper
+   depending on how the theme renders a MyST :class:, so both are covered. */
+.uwtn-landing-banner,
+.uwtn-landing-banner img {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  object-position: center top;          /* if the box is shorter than the
+                                           scaled band, lose the inner hole at
+                                           the bottom -- never the outer
+                                           surface, which is the subject */
+  margin: 0 0 2rem;
+  border-radius: 3px;
+  border: 1px solid var(--uwtn-rule);
+}
+.uwtn-landing-banner img {
+  margin: 0;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .uwtn-landing-banner,
+  .uwtn-landing-banner img { max-height: 180px; }
+}
+
+/* The archival PDF, as a visible link in the article's frontmatter badge row.
+   The theme's own route to it is an entry inside the Downloads menu, which a
+   reader has to know is there; this sits beside the licence badge and goes to
+   /<slug>/read/, where the PDF is embedded with the file and the markdown
+   source as buttons. Sized and faded to sit with the badges rather than
+   compete with them. */
+.uwtn-pdf-link {
+  font-family: var(--uwtn-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  color: var(--uwtn-muted);
+  border: 1px solid var(--uwtn-rule);
+  border-radius: 3px;
+  padding: 0.05rem 0.4rem;
+  margin-right: 0.55rem;
+  opacity: 0.75;
+}
+.uwtn-pdf-link:hover {
+  opacity: 1;
+  color: var(--uwtn-accent);
+  border-color: var(--uwtn-accent);
+}
+
+</style><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"></head><body class="m-0 bg-white dark:bg-stone-900"><div class="myst-skip-to-article fixed top-1 left-1 h-[0px] w-[0px] focus-within:z-40 focus-within:h-auto focus-within:w-auto bg-white overflow-hidden focus-within:p-2 focus-within:ring-1" aria-label="skip to content options"><a href="#skip-to-frontmatter" class="myst-skip-to-link block px-2 py-1 text-black underline">Skip to article frontmatter</a><a href="#skip-to-article" class="myst-skip-to-link block px-2 py-1 text-black underline">Skip to article content</a></div><dialog id="myst-no-css" style="position:fixed;left:0px;top:0px;width:100%;height:100vh;font-size:4rem;padding:1rem;color:black;background:white"><strong>Site not loading correctly?</strong><p>This may be due to an incorrect <code>BASE_URL</code> configuration. See<!-- --> <a href="https://mystmd.org/guide/deployment#deploy-base-url">the MyST Documentation</a> <!-- -->for reference.</p><script>
+    (() => {
+            // Test for has-styling variable set by the MyST stylesheet
+            const node = document.currentScript.parentNode;
+            const hasCSS = window.getComputedStyle(node).getPropertyValue("--has-styling");
+            if (hasCSS === ""){
+                    node.showModal();
+            }
+
+    })()
+</script></dialog><div class="myst-top-nav bg-white/80 backdrop-blur dark:bg-stone-900/80 shadow dark:shadow-stone-700 p-3 md:px-8 sticky w-full top-0 z-30 min-h-[60px]"><nav class="myst-top-nav-bar flex items-center justify-between flex-nowrap max-w-[1440px] mx-auto"><div class="flex flex-row xl:min-w-[19.5rem] mr-2 sm:mr-7 justify-start items-center shrink-0"><div class="block xl:hidden"><button class="myst-top-nav-menu-button flex items-center justify-center border-stone-400 text-stone-800 hover:text-stone-900 dark:text-stone-200 hover:dark:text-stone-100 w-10 h-10"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.5rem" height="1.5rem"><path fill-rule="evenodd" d="M3 6.75A.75.75 0 0 1 3.75 6h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 6.75ZM3 12a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm0 5.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd"></path></svg><span class="sr-only">Open Menu</span></button></div><a class="myst-home-link flex items-center ml-3 dark:text-white w-fit md:ml-5 xl:ml-7" href="/underworldcode.org-preview/d8ebfa6b05/"><span class="text-md sm:text-xl tracking-tight sm:mr-5">Underworld Geodynamics</span></a></div><div class="flex items-center flex-grow w-auto"><div class="flex-grow hidden text-md lg:block"><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R2j5cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>About</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R335cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>Underworld</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div><div class="myst-top-nav-dropdown relative inline-block mx-2 grow-0" data-headlessui-state=""><div class="inline-block"><button class="inline-flex items-center justify-center w-full py-1 mx-2 font-medium rounded-md text-md text-stone-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75" id="headlessui-menu-button-:R3j5cp:" type="button" aria-haspopup="menu" aria-expanded="false" data-headlessui-state=""><span>Technical Notes</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="ml-2 -mr-1 text-violet-200 hover:text-violet-100"><path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div></div></div><div class="flex-grow block"></div><button type="button" aria-haspopup="dialog" aria-expanded="false" data-state="closed" class="myst-search-bar flex items-center h-10 aspect-square sm:w-64 text-left text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 myst-search-bar-disabled hover:ring-blue-500 dark:hover:ring-blue-500 hover:border-blue-500 dark:hover:border-blue-500"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="p-2.5 h-10 w-10 aspect-square"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clip-rule="evenodd"></path></svg><span class="myst-search-text-placeholder hidden sm:block grow">Search</span><div aria-hidden="true" class="myst-search-shortcut items-center hidden mx-1 font-mono text-sm text-gray-600 dark:text-gray-300 sm:flex gap-x-1"><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none hide-mac">CTRL</kbd><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none show-mac">⌘</kbd><kbd class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md shadow-[0px_2px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-none ">K</kbd><script>
+;(() => {
+const script = document.currentScript;
+const root = script.parentElement;
+
+const isMac = /mac/i.test(
+      window.navigator.userAgentData?.platform ?? window.navigator.userAgent,
+    );
+root.querySelectorAll(".hide-mac").forEach(node => {node.classList.add(isMac ? "hidden" : "block")});
+root.querySelectorAll(".show-mac").forEach(node => {node.classList.add(!isMac ? "hidden" : "block")});
+})()</script></div></button><button class="myst-theme-button theme shrink-0 rounded-full border border-stone-700 dark:border-white hover:bg-neutral-100 border-solid overflow-hidden text-stone-700 dark:text-white hover:text-stone-500 dark:hover:text-neutral-800 w-8 h-8 ml-3" title="Toggle theme between light and dark mode" aria-label="Toggle theme between light and dark mode"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-theme-moon-icon h-full w-full p-[18%] hidden dark:block"><path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z" clip-rule="evenodd"></path></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-theme-sun-icon h-full w-full p-[18%] dark:hidden"><path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.758 17.303a.75.75 0 0 0-1.061-1.06l-1.591 1.59a.75.75 0 0 0 1.06 1.061l1.591-1.59ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.697 7.757a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 0 0-1.061 1.06l1.59 1.591Z"></path></svg></button><div class="block sm:hidden"></div><div class="hidden sm:block"></div></div></nav></div><div class="myst-primary-sidebar fixed xl:article-grid grid-gap xl:w-full xl:pointer-events-none overflow-auto max-xl:w-[75vw] max-xl:max-w-[350px] max-xl:!top-0 max-xl:h-screen hidden z-10" style="top:60px"><div class="myst-primary-sidebar-pointer pointer-events-auto xl:col-margin-left flex-col overflow-hidden max-xl:h-full hidden xl:flex"><div class="myst-primary-sidebar-nav flex-grow py-6 overflow-y-auto primary-scrollbar"><nav aria-label="Navigation" class="myst-primary-sidebar-topnav overflow-y-hidden transition-opacity lg:hidden ml-3 xl:ml-0 mr-3 max-w-[350px]"><div class="w-full px-1 dark:text-white font-medium"><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/d8ebfa6b05undefined">About</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:Ripsp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:Ripsp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/d8ebfa6b05undefined">Underworld</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:R12psp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:R12psp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div><div data-state="closed" class="w-full"><div class="myst-primary-sidebar-item flex flex-row w-full gap-2 px-2 my-1 text-left rounded-lg outline-none hover:bg-slate-300/30"><a class="myst-primary-sidebar-item-title py-2 grow" href="/underworldcode.org-preview/d8ebfa6b05undefined">Technical Notes</a><button class="myst-primary-sidebar-item-child self-center flex-none rounded-md group hover:bg-slate-300/30 focus:outline outline-blue-200 outline-2" aria-label="Open Folder" type="button" aria-controls="radix-:R1ipsp:" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" class="myst-primary-sidebar-item-icon transition-transform duration-300 group-data-[state=open]:rotate-90 text-text-slate-700 dark:text-slate-100" height="1.5rem" width="1.5rem"><path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd"></path></svg></button></div><div data-state="closed" id="radix-:R1ipsp:" hidden="" class="myst-primary-sidebar-item-content pl-3 pr-[2px] collapsible-content"></div></div></div></nav><div class="my-3 border-b-2 lg:hidden"></div><nav aria-label="Table of Contents" class="myst-primary-sidebar-toc flex-grow overflow-y-hidden transition-opacity ml-3 xl:ml-0 mr-3 max-w-[350px]"><div class="myst-toc w-full px-1 dark:text-white"><a title="Underworld Geodynamics" class="block break-words focus:outline outline-blue-200 outline-2 rounded myst-toc-item p-2 my-1 rounded-lg hover:bg-slate-300/30 font-bold" href="/underworldcode.org-preview/d8ebfa6b05/">Underworld Geodynamics</a><a title="Running Underworld in a Browser: Any Repository, Any Version" class="block break-words focus:outline outline-blue-200 outline-2 rounded myst-toc-item p-2 my-1 rounded-lg hover:bg-slate-300/30" href="/underworldcode.org-preview/d8ebfa6b05/running-underworld-in-a-browser">Running Underworld in a Browser: Any Repository, Any Version</a></div></nav></div><div class="myst-primary-sidebar-footer flex-none py-6 transition-all duration-700 translate-y-6 opacity-0 ml-3 xl:ml-0 mr-3 max-w-[350px]"><a class="myst-made-with-myst flex mx-auto text-gray-700 w-fit hover:text-blue-700 dark:text-gray-200 dark:hover:text-blue-400" href="https://mystmd.org/made-with-myst" target="_blank" rel="noreferrer"><svg style="width:24px;height:24px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" stroke="none"><g id="icon"><path fill="currentColor" d="M23.8,54.8v-3.6l4.7-0.8V17.5l-4.7-0.8V13H36l13.4,31.7h0.2l13-31.7h12.6v3.6l-4.7,0.8v32.9l4.7,0.8v3.6h-15
+          v-3.6l4.9-0.8V20.8H65L51.4,53.3h-3.8l-14-32.5h-0.1l0.2,17.4v12.1l5,0.8v3.6H23.8z"></path><path fill="#F37726" d="M47,86.9c0-5.9-3.4-8.8-10.1-8.8h-8.4c-5.2,0-9.4-1.3-12.5-3.8c-3.1-2.5-5.4-6.2-6.8-11l4.8-1.6
+          c1.8,5.6,6.4,8.6,13.8,8.8h9.2c6.4,0,10.8,2.5,13.1,7.5c2.3-5,6.7-7.5,13.1-7.5h8.4c7.8,0,12.7-2.9,14.6-8.7l4.8,1.6
+          c-1.4,4.9-3.6,8.6-6.8,11.1c-3.1,2.5-7.3,3.7-12.4,3.8H63c-6.7,0-10,2.9-10,8.8"></path></g></svg><span class="self-center ml-2 text-sm">Made with MyST</span></a></div></div></div><main class="article-grid grid-gap"><article class="article-grid subgrid-gap col-screen article content"><div class="hidden"></div><div id="skip-to-frontmatter" aria-label="article frontmatter" class="myst-fm-block mb-8 pt-9"><div class="myst-fm-block-header flex items-center mb-5 h-6 text-sm font-light"><div class="flex-grow"></div><div class="myst-fm-block-badges"><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" class="myst-fm-license-cc-badge opacity-50 hover:opacity-100 text-inherit hover:text-inherit myst-fm-license-content" aria-label="Content License: Creative Commons Attribution 4.0 International (CC-BY-4.0)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-license-cc-icon myst-fm-license-cc-icon-main inline-block mx-1"><title>Content License: Creative Commons Attribution 4.0 International (CC-BY-4.0)</title><path d="M12 2.2c2.7 0 5 1 7 2.9.9.9 1.6 2 2.1 3.1.5 1.2.7 2.4.7 3.8 0 1.3-.2 2.6-.7 3.8-.5 1.2-1.2 2.2-2.1 3.1-1 .9-2 1.7-3.2 2.2-1.2.5-2.5.7-3.7.7s-2.6-.3-3.8-.8c-1.2-.5-2.2-1.2-3.2-2.1s-1.6-2-2.1-3.2-.8-2.4-.8-3.7c0-1.3.2-2.5.7-3.7S4.2 6 5.1 5.1C7 3.2 9.3 2.2 12 2.2zM12 4c-2.2 0-4.1.8-5.6 2.3C5.6 7.1 5 8 4.6 9c-.4 1-.6 2-.6 3s.2 2.1.6 3c.4 1 1 1.8 1.8 2.6S8 19 9 19.4c1 .4 2 .6 3 .6s2.1-.2 3-.6c1-.4 1.9-1 2.7-1.8 1.5-1.5 2.3-3.3 2.3-5.6 0-1.1-.2-2.1-.6-3.1-.4-1-1-1.8-1.7-2.6C16.1 4.8 14.2 4 12 4zm-.1 6.4l-1.3.7c-.1-.3-.3-.5-.5-.6-.2-.1-.4-.2-.6-.2-.9 0-1.3.6-1.3 1.7 0 .5.1.9.3 1.3.2.3.5.5 1 .5.6 0 1-.3 1.2-.8l1.2.6c-.3.5-.6.9-1.1 1.1-.5.3-1 .4-1.5.4-.9 0-1.6-.3-2.1-.8-.5-.6-.8-1.3-.8-2.3 0-.9.3-1.7.8-2.2.6-.6 1.3-.8 2.1-.8 1.2 0 2.1.4 2.6 1.4zm5.6 0l-1.3.7c-.1-.3-.3-.5-.5-.6-.2-.1-.4-.2-.6-.2-.9 0-1.3.6-1.3 1.7 0 .5.1.9.3 1.3.2.3.5.5 1 .5.6 0 1-.3 1.2-.8l1.2.6c-.3.5-.6.9-1.1 1.1-.4.2-.9.3-1.4.3-.9 0-1.6-.3-2.1-.8s-.8-1.3-.8-2.2c0-.9.3-1.7.8-2.2.5-.5 1.2-.8 2-.8 1.2 0 2.1.4 2.6 1.4z"></path></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-license-cc-icon myst-fm-license-cc-icon-by inline-block mr-1"><title>Credit must be given to the creator</title><path d="M12 2.2c2.7 0 5 .9 6.9 2.8 1.9 1.9 2.8 4.2 2.8 6.9s-.9 5-2.8 6.8c-2 1.9-4.3 2.9-7 2.9-2.6 0-4.9-1-6.9-2.9-1.8-1.7-2.8-4-2.8-6.7s1-5 2.9-6.9C7 3.2 9.3 2.2 12 2.2zM12 4c-2.2 0-4.1.8-5.6 2.3C4.8 8 4 9.9 4 12c0 2.2.8 4 2.4 5.6C8 19.2 9.8 20 12 20c2.2 0 4.1-.8 5.7-2.4 1.5-1.5 2.3-3.3 2.3-5.6 0-2.2-.8-4.1-2.3-5.7C16.1 4.8 14.2 4 12 4zm2.6 5.6v4h-1.1v4.7h-3v-4.7H9.4v-4c0-.2.1-.3.2-.4.1-.2.2-.2.4-.2h4c.2 0 .3.1.4.2.2.1.2.2.2.4zm-4-2.5c0-.9.5-1.4 1.4-1.4s1.4.5 1.4 1.4c0 .9-.5 1.4-1.4 1.4s-1.4-.5-1.4-1.4z"></path></svg></a><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer" title="Code License: MIT License (MIT)" class="myst-fm-license-badge text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-license-icon myst-fm-license-icon-osi mx-1 inline-block opacity-60 hover:opacity-100 hover:text-[#599F46] myst-fm-license-code"><path d="M13.2 15.6c1.4-.5 2.1-1.6 2.1-3.3S13.8 8.9 12 8.9c-1.9 0-3.3 1.6-3.3 3.3 0 1.8.8 3 2.2 3.4l-2.3 5.9c-3.1-.8-6.3-4.6-6.3-9.3 0-5.5 4.3-10 9.7-10s9.8 4.5 9.8 10c0 4.7-3.1 8.5-6.3 9.3l-2.3-5.9z"></path></svg></a><a href="https://en.wikipedia.org/wiki/Open_access" target="_blank" rel="noopener noreferrer" title="Open Access" class="myst-fm-open-access-badge text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-block-open-access-icon mr-1 inline-block opacity-60 hover:opacity-100 hover:text-[#E18435]"><path d="M17.1 12.6h-2V7.5c0-1.7-1.4-3.1-3-3.1-.8 0-1.6.3-2.2.9-.6.5-.9 1.3-.9 2.2v.7H7v-.7c0-1.4.5-2.7 1.5-3.7s2.2-1.5 3.6-1.5 2.6.5 3.6 1.5 1.5 2.3 1.5 3.7v5.1z"></path><path d="M12 21.8c-.8 0-1.6-.2-2.3-.5-.7-.3-1.4-.8-1.9-1.3-.6-.6-1-1.2-1.3-2-.3-.8-.5-1.6-.5-2.4s.2-1.6.5-2.4c.3-.7.7-1.4 1.3-2s1.2-1 1.9-1.3c.7-.3 1.5-.5 2.3-.5.8 0 1.6.2 2.3.5.7.3 1.4.8 1.9 1.3.6.6 1 1.2 1.3 2 .3.8.5 1.6.5 2.4s-.2 1.6-.5 2.4c-.3.7-.7 1.4-1.3 2-.6.6-1.2 1-1.9 1.3-.7.3-1.5.5-2.3.5zm0-10.3c-2.2 0-4 1.8-4 4.1s1.8 4.1 4 4.1 4-1.8 4-4.1-1.8-4.1-4-4.1z"></path><circle cx="12" cy="15.6" r="1.7"></circle></svg></a><a href="https://github.com/underworld-technical-notes/underworldcode.org" title="GitHub Repository: underworld-technical-notes/underworldcode.org" target="_blank" rel="noopener noreferrer" class="myst-fm-github-link text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1.25rem" height="1.25rem" class="myst-fm-github-icon inline-block mr-1 opacity-60 hover:opacity-100"><path d="M12 2.5c-5.4 0-9.8 4.4-9.8 9.7 0 4.3 2.8 8 6.7 9.2.5.1.7-.2.7-.5v-1.8c-2.4.5-3.1-.6-3.3-1.1-.1-.3-.6-1.1-1-1.4-.3-.2-.8-.6 0-.6s1.3.7 1.5 1c.9 1.5 2.3 1.1 2.8.8.1-.6.3-1.1.6-1.3-2.2-.2-4.4-1.1-4.4-4.8 0-1.1.4-1.9 1-2.6-.1-.2-.4-1.2.1-2.6 0 0 .8-.3 2.7 1 .8-.2 1.6-.3 2.4-.3.8 0 1.7.1 2.4.3 1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.3.1 2.6.6.7 1 1.5 1 2.6 0 3.7-2.3 4.6-4.4 4.8.4.3.7.9.7 1.8V21c0 .3.2.6.7.5 3.9-1.3 6.6-4.9 6.6-9.2 0-5.4-4.4-9.8-9.8-9.8z"></path></svg></a></div><a href="https://github.com/underworld-technical-notes/underworldcode.org/edit/main/index.md" title="Edit This Page" target="_blank" rel="noopener noreferrer" class="myst-fm-edit-link text-inherit hover:text-inherit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" width="1.25rem" height="1.25rem" class="myst-fm-edit-icon inline-block mr-1 opacity-60 hover:opacity-100"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"></path></svg></a><div class="myst-fm-downloads-dropdown relative flex inline-block mx-1 grow-0" data-headlessui-state=""></div></div><h1 class="myst-fm-block-title mb-0">Preview</h1></div><div id="skip-to-article"></div><div class="uwtn-masthead"><div class="uwtn-kicker">Preview</div><div class="uwtn-wordmark">Under review</div><div class="uwtn-standfirst">Only the notes changed on this branch were built. The rest of the site is not here, which is why this was quick.</div></div><div class="uwtn-feed"><div class="uwtn-entry"><div class="uwtn-entry-text"><h2 id="running-underworld-in-a-browser-any-repository-any-version" class="relative group"><span class="heading-text"><span data-state="closed"><a class="hover-link" href="/underworldcode.org-preview/d8ebfa6b05/running-underworld-in-a-browser/">Running Underworld in a Browser: Any Repository, Any Version</a></span></span><a class="no-underline text-inherit hover:text-inherit inline-block w-0 px-0 translate-x-[10px] font-normal select-none transition-opacity opacity-0 focus:opacity-100 group-hover:opacity-70" href="#running-underworld-in-a-browser-any-repository-any-version" title="Link to this Section" aria-label="Link to this Section">¶</a></h2><div class="uwtn-entry-summary">One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.</div></div></div></div><div class="myst-backmatter-parts"></div></article></main><script>((a,l)=>{if(!window.history.state||!window.history.state.key){let u=Math.random().toString(32).slice(2);window.history.replaceState({key:u},"")}try{let d=JSON.parse(sessionStorage.getItem(a)||"{}")[l||window.history.state.key];typeof d=="number"&&window.scrollTo(0,d)}catch(u){console.error(u),sessionStorage.removeItem(a)}})("positions", null)</script><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/entry.client-PCJPW7TK.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-AQ2CODAG.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-JJXTQVMA.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-OZE3FFNP.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-RUUCG5OS.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-C4DFGG5C.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-J7TUH54J.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-FZ2S7OYD.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-JEM6JXYA.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-34XIY2DH.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-KQM5FBHR.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-OCWQY3HK.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-7HNKBP4B.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-CUKUDK3R.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-3EBOCCHJ.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-O4VQNZ62.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-4OEDG4JQ.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-GUCIBHGO.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/root-3VHQT63W.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/_shared/chunk-SHVDI3JB.js"/><link rel="modulepreload" href="/underworldcode.org-preview/d8ebfa6b05/build/routes/$-O2KOSX5W.js"/><script>window.__remixContext = {"url":"/index","state":{"loaderData":{"root":{"config":{"version":3,"myst":"1.10.1","title":"Underworld Geodynamics","options":{"hide_footer_links":true,"favicon":"/underworldcode.org-preview/d8ebfa6b05/build/uwtn-favicon-5cce186964b1ee63a19c40f7782a1a81.ico","logo_text":"Underworld Geodynamics","numbered_references":true,"style":"/underworldcode.org-preview/d8ebfa6b05/build/uwtn-6533add2c7a35c54a24995b8ce7d6542.css"},"nav":[{"title":"About","children":[{"title":"Who we are","url":"/ugcomm"},{"title":"Credits","url":"/credits"},{"title":"How to cite","url":"/how-to-cite-underworld"}]},{"title":"Underworld","children":[{"title":"Introduction to Underworld","url":"/intro-to-underworld"},{"title":"Run in the cloud","url":"/auscope-cloud"},{"title":"Model exchange","url":"/underworld-model-exchange"},{"title":"Publications using Underworld","url":"/publications-using-uw"}]},{"title":"Technical Notes","children":[{"title":"All notes","url":"/notes"},{"title":"Browse by topic","url":"/topics"},{"title":"Submit a note","url":"/submit"}]}],"actions":[],"projects":[{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Geodynamics","description":"The Underworld geodynamics code: what it is, how to run it, and the Technical Notes series of methods, benchmarks and worked examples.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"running-underworld-in-a-browser","title":"Running Underworld in a Browser: Any Repository, Any Version","description":"One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.","date":"2026-08-11","thumbnail":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg","thumbnailOptimized":"","banner":"/banner-6bfdbb83899b2890943b30d46d253d47.jpg","bannerOptimized":"","tags":[],"level":1}]}]},"CONTENT_CDN_PORT":"3100","MODE":"static","BASE_URL":"/underworldcode.org-preview/d8ebfa6b05"},"routes/$":{"config":{"version":3,"myst":"1.10.1","title":"Underworld Geodynamics","options":{"hide_footer_links":true,"favicon":"/underworldcode.org-preview/d8ebfa6b05/build/uwtn-favicon-5cce186964b1ee63a19c40f7782a1a81.ico","logo_text":"Underworld Geodynamics","numbered_references":true,"style":"/underworldcode.org-preview/d8ebfa6b05/build/uwtn-6533add2c7a35c54a24995b8ce7d6542.css"},"nav":[{"title":"About","children":[{"title":"Who we are","url":"/ugcomm"},{"title":"Credits","url":"/credits"},{"title":"How to cite","url":"/how-to-cite-underworld"}]},{"title":"Underworld","children":[{"title":"Introduction to Underworld","url":"/intro-to-underworld"},{"title":"Run in the cloud","url":"/auscope-cloud"},{"title":"Model exchange","url":"/underworld-model-exchange"},{"title":"Publications using Underworld","url":"/publications-using-uw"}]},{"title":"Technical Notes","children":[{"title":"All notes","url":"/notes"},{"title":"Browse by topic","url":"/topics"},{"title":"Submit a note","url":"/submit"}]}],"actions":[],"projects":[{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Geodynamics","description":"The Underworld geodynamics code: what it is, how to run it, and the Technical Notes series of methods, benchmarks and worked examples.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"running-underworld-in-a-browser","title":"Running Underworld in a Browser: Any Repository, Any Version","description":"One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.","date":"2026-08-11","thumbnail":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg","thumbnailOptimized":"","banner":"/banner-6bfdbb83899b2890943b30d46d253d47.jpg","bannerOptimized":"","tags":[],"level":1}]}]},"page":{"version":3,"kind":"Article","sha256":"c7248a03028726bcf9e10a7e002ed2fd8439058265a2f38d7ea732db03c695ec","slug":"index","location":"/index.md","dependencies":[],"frontmatter":{"title":"Preview","site":{"hide_outline":true},"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"github":"https://github.com/underworld-technical-notes/underworldcode.org","source_url":"https://github.com/underworld-technical-notes/underworldcode.org/blob/main/index.md","edit_url":"https://github.com/underworld-technical-notes/underworldcode.org/edit/main/index.md","exports":[]},"mdast":{"type":"root","children":[{"type":"block","children":[{"type":"div","class":"uwtn-masthead","children":[{"type":"div","class":"uwtn-kicker","children":[{"type":"text","value":"Preview","key":"H3iK4GBifc"}],"key":"MqnDncWgiE"},{"type":"div","class":"uwtn-wordmark","children":[{"type":"text","value":"Under review","key":"rostQCsVuo"}],"key":"giKSOe3U0U"},{"type":"div","class":"uwtn-standfirst","children":[{"type":"text","value":"Only the notes changed on this branch were built. The rest of the site is not here, which is why this was quick.","key":"T9EIMiyZar"}],"key":"GtUqaHnxgc"}],"key":"Iclci355JY"},{"type":"div","class":"uwtn-feed","children":[{"type":"div","class":"uwtn-entry","children":[{"type":"div","class":"uwtn-entry-text","children":[{"type":"heading","depth":2,"children":[{"type":"link","url":"/running-underworld-in-a-browser/","children":[{"type":"text","value":"Running Underworld in a Browser: Any Repository, Any Version","key":"pfdWsSUHKD"}],"urlSource":"/running-underworld-in-a-browser/","key":"DrZTjpqdTR"}],"identifier":"running-underworld-in-a-browser-any-repository-any-version","label":"Running Underworld in a Browser: Any Repository, Any Version","html_id":"running-underworld-in-a-browser-any-repository-any-version","implicit":true,"key":"ZBNnJc72p5"},{"type":"div","class":"uwtn-entry-summary","children":[{"type":"text","value":"One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.","key":"qOktwQV3BZ"}],"key":"uHWwS2nSFv"}],"key":"VvjKXi6hZK"}],"key":"ilCZFMDzHu"}],"key":"SYjFEcvZT8"}],"key":"jtNeDNWbbI"}],"key":"YakivSKfuS"},"references":{"cite":{"order":[],"data":{}}},"footer":{"navigation":{"next":{"title":"Running Underworld in a Browser: Any Repository, Any Version","url":"/running-underworld-in-a-browser","group":"Underworld Geodynamics"}}},"domain":"http://localhost:3000"},"project":{"open_access":true,"license":{"content":{"id":"CC-BY-4.0","url":"https://creativecommons.org/licenses/by/4.0/","name":"Creative Commons Attribution 4.0 International","free":true,"CC":true},"code":{"id":"MIT","url":"https://opensource.org/licenses/MIT","name":"MIT License","free":true,"osi":true}},"title":"Underworld Geodynamics","description":"The Underworld geodynamics code: what it is, how to run it, and the Technical Notes series of methods, benchmarks and worked examples.","github":"https://github.com/underworld-technical-notes/underworldcode.org","id":"underworld-technical-notes","toc":[{"file":"index.md"},{"file":"articles/running-underworld-in-a-browser/running-underworld-in-a-browser.md"}],"exports":[],"bibliography":[],"index":"index","pages":[{"slug":"running-underworld-in-a-browser","title":"Running Underworld in a Browser: Any Repository, Any Version","description":"One link opens Underworld in a browser, with any public repository pulled in beside it and any released version underneath. Nothing is installed, and nothing has to be added to the repository being launched. We use it for teaching, for workshops, and for anyone who would rather run the model from a paper than read about it.","date":"2026-08-11","thumbnail":"/underworldcode.org-preview/d8ebfa6b05/build/banner-6bfdbb83899b2890943b30d46d253d47.jpg","thumbnailOptimized":"","banner":"/banner-6bfdbb83899b2890943b30d46d253d47.jpg","bannerOptimized":"","tags":[],"level":1}]}}},"actionData":null,"errors":null},"future":{"unstable_dev":false,"unstable_postcss":false,"unstable_tailwind":false,"v2_errorBoundary":true,"v2_headers":true,"v2_meta":true,"v2_normalizeFormMethod":true,"v2_routeConvention":true}};</script><script type="module" async="">import "/underworldcode.org-preview/d8ebfa6b05/build/manifest-C732C875.js";
+import * as route0 from "/underworldcode.org-preview/d8ebfa6b05/build/root-3VHQT63W.js";
+import * as route1 from "/underworldcode.org-preview/d8ebfa6b05/build/routes/$-O2KOSX5W.js";
+window.__remixRouteModules = {"root":route0,"routes/$":route1};
+
+import("/underworldcode.org-preview/d8ebfa6b05/build/entry.client-PCJPW7TK.js");</script><script id="uwtn-reader-link">
+(function () {
+  var CLASS = "uwtn-pdf-link";
+
+  function readerHref() {
+    // Built from the CURRENT path, not from "/" + slug: the preview site serves
+    // the whole site from a hashed subdirectory, and an absolute path would walk
+    // out of it to the domain root.
+    var path = window.location.pathname.replace(/\/+$/, "");
+    if (!path || /\/read$/.test(path)) return null;
+    return path + "/read/";
+  }
+
+  // 1. A visible link in the frontmatter badge row, beside the licence badge.
+  function addBadge() {
+    var href = readerHref();
+    if (!href) return;
+    var row = document.querySelector(".myst-fm-block-badges");
+    if (!row) return;                                  // not an article page
+    var existing = row.querySelector("." + CLASS);
+    if (existing) { existing.setAttribute("href", href); return; }
+    var link = document.createElement("a");
+    link.className = CLASS;
+    link.setAttribute("href", href);
+    link.setAttribute("aria-label", "Read the archival PDF");
+    link.textContent = "PDF";
+    row.insertBefore(link, row.firstChild);
+  }
+
+  // 2. The theme's Downloads menu. Its entries are rendered from the hydration
+  //    payload only when the menu opens, so there is nothing to rewrite until
+  //    then -- and a rewrite that waits for them races the reader's next click.
+  //    Catching the click is exact.
+  document.addEventListener("click", function (event) {
+    var anchor = event.target && event.target.closest
+      ? event.target.closest('a[href*="/build/"][href$=".pdf"]') : null;
+    if (!anchor) return;
+    var href = readerHref();
+    if (!href) return;
+    event.preventDefault();
+    window.location.href = href;
+  }, true);                                            // capture: before the theme
+
+  // After hydration, like the comments bootstrap: anything done earlier is undone.
+  function start() { window.setTimeout(addBadge, 0); }
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start);
+
+  // The theme routes on the client, so a new article never reloads the page.
+  var pending = null;
+  new MutationObserver(function () {
+    if (pending) return;
+    pending = window.setTimeout(function () { pending = null; addBadge(); }, 120);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script><script id="uwtn-preview-banner">
+(function () {
+  var TEXT = "PREVIEW \\u2014 note/browser-note-abstract at e10a8f5. Not published; not the citable version.";
+  var NOTICE = "Discussion will be available after publication.";
+  var ID = "uwtn-preview-bar";
+
+  function banner() {
+    if (document.getElementById(ID)) return;
+    var bar = document.createElement("div");
+    bar.id = ID;
+    bar.textContent = TEXT;
+    bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;" +
+      "background:#7a1f1f;color:#fff;font:600 13px/1.6 system-ui,sans-serif;" +
+      "padding:.45em 1em;text-align:center;letter-spacing:.01em";
+    document.body.appendChild(bar);
+    document.documentElement.style.scrollPaddingTop = "2.6em";
+  }
+
+  // The block has to be rewritten in the DOM rather than in the markup: it is
+  // in the page TWICE, once as HTML and once as JSON in the hydration payload,
+  // and React re-renders from the JSON. A string replacement in the built file
+  // is undone the moment the page becomes interactive.
+  function discussion() {
+    var body = document.querySelector(".uwtn-discuss-body");
+    if (body && body.textContent !== NOTICE) body.textContent = NOTICE;
+    var links = document.querySelector(".uwtn-discuss-links");
+    if (links) links.remove();
+  }
+
+  function attach() { banner(); discussion(); }
+
+  function start() { window.setTimeout(attach, 0); }
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start);
+
+  // Client-side routing replaces the page without reloading it.
+  var pending = null;
+  new MutationObserver(function () {
+    if (pending) return;
+    pending = window.setTimeout(function () { pending = null; attach(); }, 150);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script></body></html>
