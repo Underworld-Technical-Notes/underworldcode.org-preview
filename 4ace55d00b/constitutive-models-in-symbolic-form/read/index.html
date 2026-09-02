@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constitutive Models in Symbolic Form — Underworld Geodynamics</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="../">
+<style>
+:root {
+  --uwtn-ink: #16202b; --uwtn-muted: #5d6b7a; --uwtn-rule: #dfe4ea;
+  --uwtn-accent: #1a4f80; --uwtn-paper: #ffffff;
+  --uwtn-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --uwtn-ink: #e6e9ec; --uwtn-muted: #9aa7b4; --uwtn-rule: #2b3541;
+    --uwtn-accent: #7cb3e0; --uwtn-paper: #131a21;
+  }
+}
+* { box-sizing: border-box; }
+/* height, not just min-height: a percentage height inside a flex column needs
+   a DEFINITE container, and without it the viewer below fell back to its
+   min-height (512px) however tall the window was -- a letterbox showing a
+   few lines of a page scaled to the full window width. */
+body { margin: 0; background: var(--uwtn-paper); color: var(--uwtn-ink);
+       font-family: var(--uwtn-sans); font-size: 16px; line-height: 1.5;
+       display: flex; flex-direction: column; height: 100vh; min-height: 100vh; }
+header { border-bottom: 1px solid var(--uwtn-rule); padding: 1.1rem 1.4rem; }
+.wrap { max-width: 68rem; margin: 0 auto; width: 100%; }
+.kicker { font-size: .78rem; letter-spacing: .09em; text-transform: uppercase;
+          color: var(--uwtn-muted); }
+h1 { font-size: 1.25rem; margin: .25rem 0 .35rem; font-weight: 600; }
+.meta { color: var(--uwtn-muted); font-size: .9rem; }
+.meta a { color: inherit; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
+.actions a { display: inline-block; text-decoration: none; font-size: .88rem;
+             padding: .4rem .8rem; border-radius: 5px;
+             border: 1px solid var(--uwtn-rule); color: var(--uwtn-ink); }
+.actions a:hover { border-color: var(--uwtn-accent); color: var(--uwtn-accent); }
+.actions a.primary { background: var(--uwtn-accent); border-color: var(--uwtn-accent);
+                     color: #fff; }
+/* min-height: 0 lets a flex item shrink below its content; without it the
+   viewer cannot give the window's height back and the page scrolls instead. */
+.reader { flex: 1 1 auto; min-height: 0; display: flex; }
+.reader object, .reader iframe { flex: 1 1 auto; display: block; width: 100%;
+                                 height: 100%; min-height: 20rem; border: 0; }
+.fallback { padding: 2rem 1.4rem; color: var(--uwtn-muted); }
+</style>
+<link rel="alternate" type="application/atom+xml" title="Underworld Geodynamics" href="https://www.underworldcode.org/feed.xml"><link rel="alternate" type="application/rss+xml" title="Underworld Geodynamics" href="https://www.underworldcode.org/rss.xml"></head>
+<body>
+<header><div class="wrap">
+  <div class="kicker">UWTN 2026-006</div>
+  <h1>Constitutive Models in Symbolic Form</h1>
+  <div class="meta">Louis Moresi · 2026-04-13 · <a href="https://doi.org/10.6084/m9.figshare.33193590">doi:10.6084/m9.figshare.33193590</a></div>
+  <div class="actions">
+    <a class="primary" href="../constitutive-models-in-symbolic-form.pdf" download>Download PDF</a>
+    <a href="../constitutive-models-in-symbolic-form.md" download>Markdown source</a>
+    <a href="../">Read on the site</a>
+  </div>
+</div></header>
+<div class="reader">
+  <object data="../constitutive-models-in-symbolic-form.pdf#view=Fit" type="application/pdf">
+    <div class="fallback">
+      <p>This browser will not display a PDF here — most phones will not.</p>
+      <p><a href="../constitutive-models-in-symbolic-form.pdf">Open the PDF</a> or
+         <a href="../">read the article on the site</a>.</p>
+    </div>
+  </object>
+</div>
+<script id="uwtn-reader-link">
+(function () {
+  var CLASS = "uwtn-pdf-link";
+
+  function readerHref() {
+    // Built from the CURRENT path, not from "/" + slug: the preview site serves
+    // the whole site from a hashed subdirectory, and an absolute path would walk
+    // out of it to the domain root.
+    var path = window.location.pathname.replace(/\/+$/, "");
+    if (!path || /\/read$/.test(path)) return null;
+    return path + "/read/";
+  }
+
+  // 1. A visible link in the frontmatter badge row, beside the licence badge.
+  function addBadge() {
+    var href = readerHref();
+    if (!href) return;
+    var row = document.querySelector(".myst-fm-block-badges");
+    if (!row) return;                                  // not an article page
+    var existing = row.querySelector("." + CLASS);
+    if (existing) { existing.setAttribute("href", href); return; }
+    var link = document.createElement("a");
+    link.className = CLASS;
+    link.setAttribute("href", href);
+    link.setAttribute("aria-label", "Read the archival PDF");
+    link.textContent = "PDF";
+    row.insertBefore(link, row.firstChild);
+  }
+
+  // 2. The theme's Downloads menu. Its entries are rendered from the hydration
+  //    payload only when the menu opens, so there is nothing to rewrite until
+  //    then -- and a rewrite that waits for them races the reader's next click.
+  //    Catching the click is exact.
+  document.addEventListener("click", function (event) {
+    var anchor = event.target && event.target.closest
+      ? event.target.closest('a[href*="/build/"][href$=".pdf"]') : null;
+    if (!anchor) return;
+    var href = readerHref();
+    if (!href) return;
+    event.preventDefault();
+    window.location.href = href;
+  }, true);                                            // capture: before the theme
+
+  // After hydration, like the comments bootstrap: anything done earlier is undone.
+  function start() { window.setTimeout(addBadge, 0); }
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start);
+
+  // The theme routes on the client, so a new article never reloads the page.
+  var pending = null;
+  new MutationObserver(function () {
+    if (pending) return;
+    pending = window.setTimeout(function () { pending = null; addBadge(); }, 120);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script><script id="uwtn-analytics-bootstrap">
+(function () {
+  var HOSTNAME = "www.underworldcode.org";
+  var TOKEN = "b01cd97667bf423dae55b77bae29fbeb";
+
+  // Preview deployments and the dev server share this build; only the real
+  // site should report, or the figures include our own editing.
+  if (HOSTNAME && window.location.hostname !== HOSTNAME) return;
+
+  function attach() {
+    if (document.querySelector('script[data-cf-beacon]')) return;
+    var script = document.createElement("script");
+    script.src = "https://static.cloudflareinsights.com/beacon.min.js";
+    // Cloudflare's own snippet is type=module. The script they serve today is
+    // a bundled IIFE that would run either way, but matching the snippet they
+    // test means a future real module does not silently stop reporting.
+    script.type = "module";
+    // set BEFORE append: the beacon reads its configuration from its own tag,
+    // via document.currentScript or a script[data-cf-beacon] lookup
+    script.setAttribute("data-cf-beacon", JSON.stringify({token: TOKEN}));
+    document.body.appendChild(script);
+  }
+
+  // Hydration has to finish first: anything present beforehand is reconciled
+  // away, because the theme hydrates the whole document rather than a root.
+  // The beacon follows client-side route changes on its own from there.
+  if (document.readyState === "complete") window.setTimeout(attach, 0);
+  else window.addEventListener("load", function () {
+    window.setTimeout(attach, 0);
+  });
+})();
+</script></body>
+</html>
