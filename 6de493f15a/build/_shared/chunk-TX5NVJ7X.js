@@ -1,0 +1,1 @@
+import{c as e}from"/underworldcode.org-preview/6de493f15a/build/_shared/chunk-RAQ24GF6.js";var i=e((r,a)=>{a.exports=s;s.displayName="hsts";s.aliases=[];function s(t){t.languages.hsts={directive:{pattern:/\b(?:includeSubDomains|max-age|preload)(?=[\s;=]|$)/i,alias:"property"},operator:/=/,punctuation:/;/}}});export{i as a};
