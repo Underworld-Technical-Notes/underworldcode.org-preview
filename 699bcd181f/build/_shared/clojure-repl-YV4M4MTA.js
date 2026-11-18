@@ -1,0 +1,1 @@
+import{c as n}from"/underworldcode.org-preview/699bcd181f/build/_shared/chunk-RAQ24GF6.js";var a=n((t,e)=>{function s(r){return{name:"Clojure REPL",contains:[{className:"meta",begin:/^([\w.-]+|\s*#_)?=>/,starts:{end:/$/,subLanguage:"clojure"}}]}}e.exports=s});export default a();
